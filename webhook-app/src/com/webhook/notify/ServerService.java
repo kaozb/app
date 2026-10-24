@@ -11,6 +11,7 @@ import android.media.AudioAttributes;
 import android.net.Uri;
 import android.os.IBinder;
 import android.speech.tts.TextToSpeech;
+import android.widget.Toast;
 
 import org.json.JSONObject;
 
@@ -74,9 +75,17 @@ public class ServerService extends Service {
                     try {
                         int r = tts.setLanguage(Locale.CHINA);
                         if (r < TextToSpeech.LANG_AVAILABLE) tts.setLanguage(Locale.US);
+                        tts.setAudioAttributes(new AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                                .build());
                         ttsReady = true;
                     } catch (Exception ignored) {
                     }
+                } else {
+                    Toast.makeText(ServerService.this,
+                            "本机未找到语音引擎（TTS），语音朗读不可用，请在系统设置中安装/启用文字转语音",
+                            Toast.LENGTH_LONG).show();
                 }
             }
         });
@@ -127,6 +136,17 @@ public class ServerService extends Service {
         if (s != null && s.floating != null) s.floating.setBallEnabled(Prefs.get(c, "floatBall", false));
     }
 
+    /** 打开语音朗读开关时立即试读一句，便于确认 TTS 可用 */
+    static void testTts(Context c) {
+        ServerService s = instance;
+        if (s != null && s.ttsReady && s.tts != null) {
+            try {
+                s.tts.speak("语音朗读已开启", TextToSpeech.QUEUE_FLUSH, null, "tts_test");
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     private void startServer(int port) {
         lastError = null;
         thread = new ServerThread(port);
@@ -149,7 +169,7 @@ public class ServerService extends Service {
         boolean sound = Prefs.get(this, "sound", true);
         boolean vib = Prefs.get(this, "vibrate", true);
         String r = sound ? Prefs.ringtone(this) : null;
-        return "msg_" + (sound ? (r == null ? "def" : Integer.toHexString(r.hashCode())) : "silent") + (vib ? "v" : "");
+        return "msg_v2_" + (sound ? (r == null ? "def" : Integer.toHexString(r.hashCode())) : "silent") + (vib ? "v" : "");
     }
 
     private void ensureMsgChannel() {
@@ -157,19 +177,21 @@ public class ServerService extends Service {
         if (id.equals(curMsgChannel)) return;
         NotificationManager nm = getSystemService(NotificationManager.class);
         for (NotificationChannel c : nm.getNotificationChannels()) {
-            if (c.getId().startsWith("msg_") && !c.getId().equals(id)) nm.deleteNotificationChannel(c.getId());
+            if (c.getId().startsWith("msg") && !c.getId().equals(id)) nm.deleteNotificationChannel(c.getId());
         }
         NotificationChannel ch = new NotificationChannel(id, "Webhook 消息", NotificationManager.IMPORTANCE_DEFAULT);
         ch.enableVibration(Prefs.get(this, "vibrate", true));
-        String r = Prefs.get(this, "sound", true) ? Prefs.ringtone(this) : null;
-        if (r != null) {
+        boolean sound = Prefs.get(this, "sound", true);
+        String r = sound ? Prefs.ringtone(this) : null;
+        if (!sound) {
+            ch.setSound(null, null);            // 声音关闭 → 静音
+        } else if (r != null) {
             ch.setSound(Uri.parse(r), new AudioAttributes.Builder()
                     .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                     .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                    .build());
-        } else {
-            ch.setSound(null, null);
+                    .build());                  // 自定义铃声
         }
+        // 开着声音但没选铃声 → 不调用 setSound，走系统默认通知提示音
         nm.createNotificationChannel(ch);
         curMsgChannel = id;
     }

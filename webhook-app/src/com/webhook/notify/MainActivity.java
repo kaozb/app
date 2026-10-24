@@ -90,21 +90,35 @@ public class MainActivity extends Activity {
         bindBool(R.id.sw_notify, "notify", true);
         bindBool(R.id.sw_sound, "sound", true);
         bindBool(R.id.sw_vibrate, "vibrate", true);
-        bindBool(R.id.sw_tts, "tts", false);
         bindBool(R.id.sw_boot, "boot", false);
+
+        Switch swTts = (Switch) findViewById(R.id.sw_tts);
+        swTts.setChecked(Prefs.get(this, "tts", false));
+        swTts.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                Prefs.set(MainActivity.this, "tts", on);
+                if (on) ServerService.testTts(MainActivity.this);
+            }
+        });
+
         bindFloat(R.id.sw_float_msg, "floatMsg");
         bindFloat(R.id.sw_float_ball, "floatBall");
 
         findViewById(R.id.ring_row).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent i = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);
-                i.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION);
-                i.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true);
-                i.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false);
-                String cur = Prefs.ringtone(MainActivity.this);
-                if (cur != null) i.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(cur));
-                startActivityForResult(i, REQ_RING);
+                try {
+                    Intent i = new Intent(RingtoneManager.ACTION_RINGTONE_PICKER);
+                    i.putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_NOTIFICATION);
+                    i.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true);
+                    i.putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false);
+                    String cur = Prefs.ringtone(MainActivity.this);
+                    if (cur != null) i.putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(cur));
+                    startActivityForResult(i, REQ_RING);
+                } catch (Exception e) {
+                    Toast.makeText(MainActivity.this, "无法打开铃声选择器", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -181,6 +195,13 @@ public class MainActivity extends Activity {
             Uri uri = data.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI);
             Prefs.ringtone(this, uri != null ? uri.toString() : null);
             ringVal.setText(ringTitle());
+            if (uri != null) {
+                try {
+                    Ringtone r = RingtoneManager.getRingtone(this, uri);
+                    if (r != null) r.play();
+                } catch (Exception ignored) {
+                }
+            }
         }
     }
 
