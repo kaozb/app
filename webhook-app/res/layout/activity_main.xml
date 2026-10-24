@@ -65,14 +65,24 @@
 
                 <TextView
                     android:id="@+id/status"
-                    android:layout_width="0dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
                     android:layout_marginStart="8dp"
                     android:text="已停止"
                     android:textColor="@color/muted"
                     android:textSize="16sp"
-                    android:maxLines="1"
+                    android:maxLines="1"/>
+
+                <TextView
+                    android:id="@+id/urls"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginStart="8dp"
+                    android:text=""
+                    android:textColor="@color/muted"
+                    android:textSize="12sp"
+                    android:maxLines="2"
                     android:ellipsize="end"/>
             </LinearLayout>
 
@@ -114,15 +124,6 @@
                     android:textColor="@color/ink"/>
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/urls"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:layout_marginStart="6dp"
-                android:text="打开开关后，这里会显示接收地址"
-                android:textColor="@color/muted"
-                android:textSize="12sp"/>
         </LinearLayout>
 
         <LinearLayout

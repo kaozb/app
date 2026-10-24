@@ -286,7 +286,7 @@ public class MainActivity extends Activity {
         } else {
             status.setText("已停止");
             status.setTextColor(getColor(R.color.muted));
-            urls.setText("打开开关后，这里会显示接收地址");
+            urls.setText("");
         }
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         battery.setText(pm.isIgnoringBatteryOptimizations(getPackageName()) ? "已忽略" : "去设置");
