@@ -109,51 +109,56 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="监听端口"
-                    android:textColor="@color/muted"
-                    android:textSize="12sp"/>
+                    android:orientation="vertical">
 
-                <TextView
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="监听端口"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp"/>
+
+                    <EditText
+                        android:id="@+id/port"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/bg_inset"
+                        android:padding="12dp"
+                        android:inputType="number"
+                        android:maxLength="5"
+                        android:textSize="16sp"
+                        android:textColor="@color/ink"/>
+                </LinearLayout>
+
+                <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Webhook 开关"
-                    android:textColor="@color/muted"
-                    android:textSize="12sp"
-                    android:gravity="center"/>
-            </LinearLayout>
+                    android:layout_marginStart="16dp"
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginTop="10dp">
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Webhook 开关"
+                        android:textColor="@color/muted"
+                        android:textSize="12sp"
+                        android:gravity="center"/>
 
-                <EditText
-                    android:id="@+id/port"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:background="@drawable/bg_inset"
-                    android:padding="12dp"
-                    android:inputType="number"
-                    android:maxLength="5"
-                    android:textSize="16sp"
-                    android:textColor="@color/ink"/>
-
-                <Switch
-                    android:id="@+id/toggle"
-                    style="@style/NeoSwitch"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:gravity="center"
-                    android:layout_marginStart="8dp"/>
+                    <Switch
+                        android:id="@+id/toggle"
+                        style="@style/NeoSwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:layout_gravity="center_horizontal"/>
+                </LinearLayout>
             </LinearLayout>
         </LinearLayout>
 

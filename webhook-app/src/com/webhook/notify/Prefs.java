@@ -9,8 +9,14 @@ final class Prefs {
         return c.getSharedPreferences("cfg", Context.MODE_PRIVATE);
     }
 
+    /** 首次启动随机分配一个 10000 以上的端口，之后沿用已保存的值 */
     static int getPort(Context c) {
-        return p(c).getInt("port", 8080);
+        int p = p(c).getInt("port", 0);
+        if (p < 1 || p > 65535) {
+            p = 10000 + new java.util.Random().nextInt(55536);
+            setPort(c, p);
+        }
+        return p;
     }
 
     static void setPort(Context c, int v) {
