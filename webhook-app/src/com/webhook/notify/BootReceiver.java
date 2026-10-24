@@ -24,11 +24,14 @@ public class BootReceiver extends BroadcastReceiver {
                 || "android.intent.action.QUICKBOOT_POWERON".equals(action);
 
         if (boot) {
-            scheduleWatchdog(context);
+            if (Prefs.get(context, "keepAlive", true)) scheduleWatchdog(context);
             if (!Prefs.get(context, "boot", false)) return;
         } else if (!ACTION_WATCHDOG.equals(action)) {
             return;
         }
+
+        // 后台保活关闭后不再自动拉起
+        if (!Prefs.get(context, "keepAlive", true)) return;
 
         // 只要上次是用户主动运行的，就恢复服务
         if (!Prefs.get(context, "running", false)) return;
@@ -57,6 +60,15 @@ public class BootReceiver extends BroadcastReceiver {
             AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
             am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
                     SystemClock.elapsedRealtime() + delayMs, watchdogIntent(c));
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 关闭「后台保活」时取消定时器 */
+    static void cancelWatchdog(Context c) {
+        try {
+            AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
+            am.cancel(watchdogIntent(c));
         } catch (Exception ignored) {
         }
     }

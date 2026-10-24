@@ -54,12 +54,14 @@ public final class R {
     public static final int sw_boot=0x7f030011;
     public static final int sw_fgs=0x7f030012;
     public static final int sw_float_msg=0x7f030013;
-    public static final int sw_notify=0x7f030014;
-    public static final int sw_sound=0x7f030015;
-    public static final int sw_tts=0x7f030016;
-    public static final int sw_vibrate=0x7f030017;
-    public static final int toggle=0x7f030018;
-    public static final int urls=0x7f030019;
+    public static final int sw_keep=0x7f030014;
+    public static final int sw_keep_tip=0x7f030015;
+    public static final int sw_notify=0x7f030016;
+    public static final int sw_sound=0x7f030017;
+    public static final int sw_tts=0x7f030018;
+    public static final int sw_vibrate=0x7f030019;
+    public static final int toggle=0x7f03001a;
+    public static final int urls=0x7f03001b;
   }
   public static final class layout {
     public static final int activity_clipboard=0x7f040000;

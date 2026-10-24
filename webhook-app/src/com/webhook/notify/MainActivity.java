@@ -97,6 +97,31 @@ public class MainActivity extends Activity {
         bindBool(R.id.sw_vibrate, "vibrate", true);
         bindBool(R.id.sw_boot, "boot", false);
 
+        Switch swKeep = (Switch) findViewById(R.id.sw_keep);
+        swKeep.setChecked(Prefs.get(this, "keepAlive", true));
+        swKeep.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                Prefs.set(MainActivity.this, "keepAlive", on);
+                if (on) {
+                    BootReceiver.scheduleWatchdog(MainActivity.this);
+                } else {
+                    BootReceiver.cancelWatchdog(MainActivity.this);
+                }
+            }
+        });
+
+        Switch swKeepTip = (Switch) findViewById(R.id.sw_keep_tip);
+        swKeepTip.setChecked(Prefs.get(this, "keepAliveTip", true));
+        swKeepTip.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                Prefs.set(MainActivity.this, "keepAliveTip", on);
+                // 重新开启提醒后，允许再次弹出白名单引导
+                if (on) Prefs.set(MainActivity.this, "batAsked", false);
+            }
+        });
+
         Switch swFgs = (Switch) findViewById(R.id.sw_fgs);
         swFgs.setChecked(Prefs.get(this, "fgsNotify", true));
         swFgs.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
@@ -187,6 +212,7 @@ public class MainActivity extends Activity {
 
     /** 首次启动服务且未加入白名单时，引导一次 */
     private void maybeAskBattery() {
+        if (!Prefs.get(this, "keepAliveTip", true)) return;
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         if (pm.isIgnoringBatteryOptimizations(getPackageName())) return;
         if (Prefs.get(this, "batAsked", false)) return;

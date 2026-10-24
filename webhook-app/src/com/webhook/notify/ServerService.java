@@ -105,14 +105,14 @@ public class ServerService extends Service {
             }
         }
         Prefs.setRunning(this, true);
-        BootReceiver.scheduleWatchdog(this);
+        if (Prefs.get(this, "keepAlive", true)) BootReceiver.scheduleWatchdog(this);
         return START_STICKY;
     }
 
     /** 用户从最近任务划掉时，延时尝试重新拉起 */
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        BootReceiver.scheduleRestart(this, 2000);
+        if (Prefs.get(this, "keepAlive", true)) BootReceiver.scheduleRestart(this, 2000);
         super.onTaskRemoved(rootIntent);
     }
 
