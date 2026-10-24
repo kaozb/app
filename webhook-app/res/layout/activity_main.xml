@@ -42,14 +42,20 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/bg_card"
-            android:padding="16dp"
+            android:padding="12dp"
             android:layout_marginTop="14dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_margin="4dp"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="12dp"
+                android:paddingBottom="12dp">
 
                 <View
                     android:id="@+id/led"
@@ -61,36 +67,59 @@
                     android:id="@+id/status"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_weight="3"
+                    android:layout_weight="1"
                     android:layout_marginStart="8dp"
                     android:text="已停止"
                     android:textColor="@color/muted"
                     android:textSize="16sp"
                     android:maxLines="1"
                     android:ellipsize="end"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="14dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="9dp"
+                android:paddingBottom="9dp">
 
                 <TextView
-                    android:id="@+id/clip_btn"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:background="@drawable/bg_pill"
-                    android:paddingTop="6dp"
-                    android:paddingBottom="6dp"
-                    android:text="剪切板"
+                    android:text="监听端口"
+                    android:textColor="@color/ink"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
+
+                <EditText
+                    android:id="@+id/port"
+                    android:layout_width="110dp"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_inset"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:inputType="number"
+                    android:maxLength="5"
                     android:gravity="center"
-                    android:textColor="@color/accent_deep"
-                    android:textSize="12sp"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:foreground="?android:attr/selectableItemBackground"/>
+                    android:textSize="15sp"
+                    android:textColor="@color/ink"/>
             </LinearLayout>
 
             <TextView
                 android:id="@+id/urls"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="8dp"
+                android:layout_marginStart="6dp"
                 android:text="打开开关后，这里会显示接收地址"
                 android:textColor="@color/muted"
                 android:textSize="12sp"/>
@@ -99,67 +128,63 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:orientation="horizontal"
             android:background="@drawable/bg_card"
-            android:padding="16dp"
+            android:padding="12dp"
             android:layout_marginTop="12dp">
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal">
+                android:id="@+id/clip_btn"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="4dp"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:background="@drawable/bg_pill"
+                android:paddingTop="13dp"
+                android:paddingBottom="13dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackground">
 
-                <LinearLayout
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="剪切板"
+                    android:textColor="@color/accent_deep"
+                    android:textSize="14sp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="4dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <TextView
+                    android:id="@+id/svc_label"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:orientation="vertical">
+                    android:text="启动服务"
+                    android:textColor="@color/ink"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
 
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="监听端口"
-                        android:textColor="@color/muted"
-                        android:textSize="12sp"/>
-
-                    <EditText
-                        android:id="@+id/port"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:background="@drawable/bg_inset"
-                        android:padding="12dp"
-                        android:inputType="number"
-                        android:maxLength="5"
-                        android:textSize="16sp"
-                        android:textColor="@color/ink"/>
-                </LinearLayout>
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="16dp"
-                    android:orientation="vertical"
-                    android:gravity="center_horizontal">
-
-                    <TextView
-                        android:id="@+id/svc_label"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="启动服务"
-                        android:textColor="@color/muted"
-                        android:textSize="12sp"
-                        android:gravity="center"/>
-
-                    <Switch
-                        android:id="@+id/toggle"
-                        style="@style/NeoSwitch"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="10dp"
-                        android:layout_gravity="center_horizontal"/>
-                </LinearLayout>
+                <Switch
+                    android:id="@+id/toggle"
+                    style="@style/NeoSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
             </LinearLayout>
         </LinearLayout>
 
@@ -431,21 +456,23 @@
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:orientation="horizontal"
             android:background="@drawable/bg_card"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
+            android:padding="12dp"
             android:layout_marginTop="8dp">
 
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="4dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="11dp"
-                android:paddingBottom="11dp">
+                android:background="@drawable/bg_pill"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
 
                 <TextView
                     android:layout_width="0dp"
@@ -453,7 +480,9 @@
                     android:layout_weight="1"
                     android:text="开机自启"
                     android:textColor="@color/ink"
-                    android:textSize="15sp"/>
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
 
                 <Switch
                     android:id="@+id/sw_boot"
@@ -462,42 +491,42 @@
                     android:layout_height="wrap_content"/>
             </LinearLayout>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginStart="16dp"
-                android:background="@color/divider"/>
-
             <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:layout_margin="4dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="11dp"
-                android:paddingBottom="11dp">
+                android:background="@drawable/bg_pill"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
 
                 <TextView
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="电池优化白名单"
+                    android:text="电池优化"
                     android:textColor="@color/ink"
-                    android:textSize="15sp"/>
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
 
                 <TextView
                     android:id="@+id/battery"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/bg_pill"
-                    android:paddingStart="14dp"
-                    android:paddingEnd="14dp"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
                     android:paddingTop="5dp"
                     android:paddingBottom="5dp"
                     android:text="去设置"
                     android:textColor="@color/dark"
-                    android:textSize="12sp"
+                    android:textSize="11sp"
+                    android:maxLines="1"
                     android:clickable="true"
                     android:focusable="true"
                     android:foreground="?android:attr/selectableItemBackground"/>
