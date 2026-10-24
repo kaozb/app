@@ -1,0 +1,77 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install SDK components
+        run: sdkmanager --install "platforms;android-34" "build-tools;35.0.0"
+
+      - name: Build APK
+        working-directory: webhook-app
+        run: |
+          chmod +x build.sh
+          ANDROID_SDK="$ANDROID_HOME" ./build.sh
+          ls -l Webhook.apk
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Webhook-apk
+          path: webhook-app/Webhook.apk
+          if-no-files-found: error
+
+      # 推送 v* 标签：生成对应正式 Release
+      - name: Publish release (tag)
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Webhook ${{ github.ref_name }}
+          files: webhook-app/Webhook.apk
+          body: |
+            自动构建产物，提交 `${{ github.sha }}`。
+
+            下载 `Webhook.apk` 覆盖安装即可（与历史版本使用同一签名，可直接升级）。
+          prerelease: false
+
+      # 推送 main：维护滚动预发布 latest-build，同名资产自动覆盖
+      - name: Publish release (branch)
+        if: github.ref_type == 'branch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest-build
+          name: 最新构建（main）
+          target_commitish: ${{ github.sha }}
+          files: webhook-app/Webhook.apk
+          body: |
+            `main` 分支最新自动构建，提交 `${{ github.sha }}`。
+
+            下载 `Webhook.apk` 覆盖安装即可（与历史版本使用同一签名，可直接升级）。
+          prerelease: true

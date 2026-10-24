@@ -31,7 +31,19 @@ bash build.sh            # 使用默认 SDK 路径
 ANDROID_SDK=/path/to/sdk bash build.sh
 ```
 
-产物：`Webhook.apk`（约 46KB）。
+产物：`Webhook.apk`（约 50KB）。
+
+### 持续集成（GitHub Actions）
+
+工作流：[.github/workflows/build-apk.yml](file:///workspace/.github/workflows/build-apk.yml)
+
+- **触发**：push 到 `main`、推送 `v*` 标签、手动 `workflow_dispatch`
+- **环境**：Ubuntu runner + JDK 17 + `android-actions/setup-android`，安装 `platforms;android-34`、`build-tools;35.0.0`
+- **构建**：`ANDROID_SDK=$ANDROID_HOME ./build.sh`，复用仓库内的 `debug.keystore`，保证各次构建签名一致、可直接覆盖安装
+- **产物**：上传 `Webhook-apk` artifact，同时发布到 Release
+- **发布策略**：`main` 推送维护滚动预发布 `latest-build`（同名 APK 自动覆盖）；`v*` 标签生成同名正式 Release
+
+> 首次使用需在仓库 Settings → Actions 中允许工作流运行；发布依赖 `permissions: contents: write`（已写入工作流）。
 
 ### 测试
 
