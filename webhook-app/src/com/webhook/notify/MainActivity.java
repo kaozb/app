@@ -83,7 +83,9 @@ public class MainActivity extends Activity {
                     Intent i = new Intent(MainActivity.this, ServerService.class);
                     i.putExtra(ServerService.EXTRA_PORT, port);
                     startForegroundService(i);
+                    maybeAskBattery();
                 } else {
+                    Prefs.setRunning(MainActivity.this, false);
                     stopService(new Intent(MainActivity.this, ServerService.class));
                     syncUi();
                 }
@@ -102,6 +104,11 @@ public class MainActivity extends Activity {
             public void onCheckedChanged(CompoundButton b, boolean on) {
                 Prefs.set(MainActivity.this, "fgsNotify", on);
                 ServerService.applyFgsSetting(MainActivity.this);
+                if (!on) {
+                    Toast.makeText(MainActivity.this,
+                            "关闭常驻通知会显著降低后台存活率，建议保持开启",
+                            Toast.LENGTH_LONG).show();
+                }
             }
         });
 
@@ -173,17 +180,46 @@ public class MainActivity extends Activity {
                     Toast.makeText(MainActivity.this, "已在电池优化白名单中", Toast.LENGTH_SHORT).show();
                     return;
                 }
-                try {
-                    startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
-                            Uri.parse("package:" + getPackageName())));
-                } catch (Exception e) {
-                    try {
-                        startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
-                    } catch (Exception ignored) {
-                    }
-                }
+                openBatterySettings();
             }
         });
+    }
+
+    /** 首次启动服务且未加入白名单时，引导一次 */
+    private void maybeAskBattery() {
+        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+        if (pm.isIgnoringBatteryOptimizations(getPackageName())) return;
+        if (Prefs.get(this, "batAsked", false)) return;
+        Prefs.set(this, "batAsked", true);
+        new AlertDialog.Builder(this)
+                .setTitle("保持后台接收")
+                .setMessage("系统可能在后台清理本应用，导致漏收消息。建议把 Webhook 加入电池优化白名单；"
+                        + "部分手机还需在系统设置中允许「自启动」与「后台运行」。")
+                .setNegativeButton("暂不", null)
+                .setPositiveButton("去设置", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        openBatterySettings();
+                    }
+                })
+                .show();
+    }
+
+    private void openBatterySettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS));
+            } catch (Exception e2) {
+                try {
+                    startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.parse("package:" + getPackageName())));
+                } catch (Exception ignored) {
+                }
+            }
+        }
     }
 
     private void bindBool(int id, final String key, boolean def) {
