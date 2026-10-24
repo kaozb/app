@@ -31,8 +31,11 @@ import java.net.Socket;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class ServerService extends Service {
 
@@ -63,6 +66,15 @@ public class ServerService extends Service {
         @Override
         public void run() {
             shutdownTts();
+        }
+    };
+
+    /** 2 秒内的消息合并成一次提醒，避免高频推送反复响铃 / 刷通知 */
+    private final List<String> batch = new ArrayList<String>();
+    private final Runnable flushBatch = new Runnable() {
+        @Override
+        public void run() {
+            flush();
         }
     };
 
@@ -203,6 +215,7 @@ public class ServerService extends Service {
         if (floating != null) floating.shutdown();
         stopRing();
         ui.removeCallbacks(ttsRelease);
+        ui.removeCallbacks(flushBatch);
         shutdownTts();
         instance = null;
         // 不在这里清 running 标记：被系统回收时保留，看门狗才能自动拉起
@@ -308,7 +321,10 @@ public class ServerService extends Service {
     }
 
     private class ServerThread extends Thread {
+        /** 并发连接上限：防止端口被扫描或异常流量打出一堆线程 */
+        private static final int MAX_CONN = 8;
         private final int port;
+        private final AtomicInteger active = new AtomicInteger();
         private volatile boolean stoppedByRequest = false;
         private volatile ServerSocket ss;
 
@@ -325,13 +341,30 @@ public class ServerService extends Service {
                 listenPort = port;
                 running = true;
                 while (!ss.isClosed()) {
-                    Socket s = ss.accept();
-                    new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            handle(s);
+                    final Socket s = ss.accept();
+                    if (active.incrementAndGet() > MAX_CONN) {
+                        active.decrementAndGet();
+                        reject(s);
+                        continue;
+                    }
+                    try {
+                        new Thread(new Runnable() {
+                            @Override
+                            public void run() {
+                                try {
+                                    handle(s);
+                                } finally {
+                                    active.decrementAndGet();
+                                }
+                            }
+                        }).start();
+                    } catch (Exception e) {
+                        active.decrementAndGet();
+                        try {
+                            s.close();
+                        } catch (Exception ignored) {
                         }
-                    }).start();
+                    }
                 }
             } catch (Exception e) {
                 if (!stoppedByRequest) {
@@ -359,11 +392,24 @@ public class ServerService extends Service {
             } catch (Exception ignored) {
             }
         }
+
+        /** 并发已满：直接返回 503，避免积压线程 */
+        private void reject(Socket s) {
+            try {
+                respond(s.getOutputStream(), 503, "服务繁忙，请稍后重试", false);
+            } catch (Exception ignored) {
+            } finally {
+                try {
+                    s.close();
+                } catch (Exception ignored) {
+                }
+            }
+        }
     }
 
     private void handle(Socket s) {
         try {
-            s.setSoTimeout(8000);
+            s.setSoTimeout(5000);
             s.setTcpNoDelay(true);
             InputStream in = s.getInputStream();
 
@@ -411,7 +457,7 @@ public class ServerService extends Service {
             if (msg == null) {
                 respond(out, 400, "缺少 text 字段，请发送 {\"text\":\"内容\"}", "HEAD".equals(method));
             } else {
-                notifyMessage(msg);
+                onMessage(msg);
                 respond(out, 200, "success", "HEAD".equals(method));
             }
         } catch (Exception ignored) {
@@ -426,7 +472,8 @@ public class ServerService extends Service {
     /** 统一响应格式：{"text":"..."} */
     private static void respond(OutputStream out, int code, String text, boolean headOnly) throws Exception {
         byte[] b = ("{\"text\":" + JSONObject.quote(text) + "}").getBytes(StandardCharsets.UTF_8);
-        String head = "HTTP/1.1 " + code + (code == 200 ? " OK" : " Bad Request")
+        String reason = code == 200 ? " OK" : (code == 503 ? " Service Unavailable" : " Bad Request");
+        String head = "HTTP/1.1 " + code + reason
                 + "\r\nContent-Type: application/json; charset=utf-8"
                 + "\r\nContent-Length: " + (headOnly ? 0 : b.length)
                 + "\r\nConnection: close\r\n\r\n";
@@ -471,21 +518,52 @@ public class ServerService extends Service {
         return line;
     }
 
-    private synchronized void notifyMessage(String msg) {
-        String title = "Webhook";
-        if (msg == null || msg.trim().length() == 0) msg = "(空消息)";
-
+    /** 收到一条消息：先落盘，再进入 2 秒合并窗口 */
+    private void onMessage(String msg) {
+        String text = msg == null || msg.trim().length() == 0 ? "(空消息)" : msg;
         String time = new SimpleDateFormat("HH:mm", Locale.CHINA).format(new Date());
-        HistoryStore.append(this, title, msg, time);
+        HistoryStore.append(this, "Webhook", text, time);
 
+        boolean startTimer;
+        synchronized (batch) {
+            startTimer = batch.isEmpty();
+            if (batch.size() < 100) batch.add(text);
+        }
+        if (startTimer) ui.postDelayed(flushBatch, 2000);
+    }
+
+    /** 合并窗口结束：单条照旧，多条合并成一条提醒 */
+    private void flush() {
+        List<String> items;
+        synchronized (batch) {
+            items = new ArrayList<String>(batch);
+            batch.clear();
+        }
+        if (items.isEmpty()) return;
+
+        if (items.size() == 1) {
+            deliver("Webhook", items.get(0), items.get(0));
+            return;
+        }
+
+        StringBuilder sb = new StringBuilder();
+        for (String s : items) {
+            if (sb.length() > 0) sb.append('\n');
+            sb.append("• ").append(s);
+        }
+        deliver("Webhook · " + items.size() + " 条消息",
+                items.get(0) + " …等 " + items.size() + " 条", sb.toString());
+    }
+
+    private void deliver(String title, String body, String big) {
         ensureMsgChannel();
         playAlert();
         if (Prefs.get(this, "notify", true)) {
             Notification n = new Notification.Builder(this, curMsgChannel)
                     .setSmallIcon(R.drawable.ic_notification)
                     .setContentTitle(title)
-                    .setContentText(msg)
-                    .setStyle(new Notification.BigTextStyle().bigText(msg))
+                    .setContentText(body)
+                    .setStyle(new Notification.BigTextStyle().bigText(big))
                     .setAutoCancel(true)
                     .setContentIntent(PendingIntent.getActivity(this, 0,
                             new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE))
@@ -493,10 +571,14 @@ public class ServerService extends Service {
             getSystemService(NotificationManager.class).notify(nextNotifyId++, n);
         }
 
-        if (floating != null) floating.showMessage(title, msg);
+        if (floating != null) {
+            String f = big.length() > 160 ? big.substring(0, 160) + "…" : big;
+            floating.showMessage(title, f);
+        }
 
         if (Prefs.get(this, "tts", false)) {
-            speak(title + "。" + msg);
+            String t = body.length() > 120 ? body.substring(0, 120) : body;
+            speak(title + "。" + t);
         }
     }
 

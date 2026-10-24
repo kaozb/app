@@ -9,17 +9,22 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * 消息历史持久化（JSON 行文件），供剪切板页读取。
  * 每条只保留前 2000 字，避免文件过大。
+ * 写入采用追加模式，仅当条数超过上限的 1.2 倍时才整体重写一次，减少闪存写入。
  */
 final class HistoryStore {
 
     private static final String FILE = "history.jsonl";
     private static final int MAX_TEXT = 2000;
+
+    /** 当前行数缓存，-1 表示尚未统计 */
+    private static int lineCount = -1;
 
     private HistoryStore() {
     }
@@ -36,10 +41,23 @@ final class HistoryStore {
             o.put("title", title);
             o.put("text", t);
             o.put("time", time);
-            List<String> lines = readLines(c);
-            lines.add(o.toString());
-            while (lines.size() > limit(c)) lines.remove(0);
-            writeLines(c, lines);
+
+            File f = file(c);
+            // 上次写入若被中断，末尾可能缺换行，先补一个，避免两行粘连
+            boolean needNl = f.exists() && f.length() > 0 && lastByte(f) != '\n';
+            FileOutputStream out = new FileOutputStream(f, true);
+            try {
+                out.write(((needNl ? "\n" : "") + o.toString() + "\n").getBytes("UTF-8"));
+                out.flush();
+            } finally {
+                out.close();
+            }
+
+            if (lineCount < 0) lineCount = countLines(f);
+            else lineCount++;
+
+            int lim = limit(c);
+            if (lineCount > lim + Math.max(4, lim / 5)) compact(c, lim);
         } catch (Exception ignored) {
         }
     }
@@ -63,9 +81,13 @@ final class HistoryStore {
         try {
             List<String> lines = readLines(c);
             int limit = limit(c);
-            if (lines.size() <= limit) return;
+            if (lines.size() <= limit) {
+                lineCount = lines.size();
+                return;
+            }
             while (lines.size() > limit) lines.remove(0);
             writeLines(c, lines);
+            lineCount = lines.size();
         } catch (Exception ignored) {
         }
     }
@@ -75,6 +97,53 @@ final class HistoryStore {
         try {
             file(c).delete();
         } catch (Exception ignored) {
+        }
+        lineCount = 0;
+    }
+
+    /** 整体重写为最近 lim 条，行数回落到上限 */
+    private static void compact(Context c, int lim) {
+        List<String> lines = readLines(c);
+        while (lines.size() > lim) lines.remove(0);
+        writeLines(c, lines);
+        lineCount = lines.size();
+    }
+
+    private static int countLines(File f) {
+        int n = 0;
+        FileInputStream in = null;
+        try {
+            in = new FileInputStream(f);
+            byte[] buf = new byte[8192];
+            int r;
+            while ((r = in.read(buf)) > 0) {
+                for (int i = 0; i < r; i++) {
+                    if (buf[i] == '\n') n++;
+                }
+            }
+        } catch (Exception ignored) {
+        } finally {
+            try {
+                if (in != null) in.close();
+            } catch (Exception ignored) {
+            }
+        }
+        return n;
+    }
+
+    private static int lastByte(File f) {
+        RandomAccessFile raf = null;
+        try {
+            raf = new RandomAccessFile(f, "r");
+            raf.seek(raf.length() - 1);
+            return raf.read();
+        } catch (Exception e) {
+            return '\n';
+        } finally {
+            try {
+                if (raf != null) raf.close();
+            } catch (Exception ignored) {
+            }
         }
     }
 
