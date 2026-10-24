@@ -8,6 +8,7 @@
     <color name="muted">#9A8F7B</color>
     <color name="accent">#7C9A6D</color>
     <color name="accent_deep">#66855A</color>
+    <color name="warn">#AC7B46</color>
     <color name="hi">#FFFDF4</color>
     <color name="sh">#D9CFBA</color>
     <color name="ic_launcher_background">#7C9A6D</color>

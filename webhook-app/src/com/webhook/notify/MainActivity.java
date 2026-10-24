@@ -35,7 +35,7 @@ public class MainActivity extends Activity {
 
     private EditText portEdit;
     private Switch toggle;
-    private TextView status, urls, ringVal, battery, svcLabel;
+    private TextView status, urls, ringVal, battery, svcLabel, hint;
     private TextView chkNotifVal, chkOverlayVal;
     private View led;
     private final Handler handler = new Handler();
@@ -63,6 +63,7 @@ public class MainActivity extends Activity {
         svcLabel = findViewById(R.id.svc_label);
         chkNotifVal = findViewById(R.id.chk_notif_val);
         chkOverlayVal = findViewById(R.id.chk_overlay_val);
+        hint = findViewById(R.id.hint);
 
         portEdit.setText(String.valueOf(Prefs.getPort(this)));
         ringVal.setText(ringTitle());
@@ -148,14 +149,13 @@ public class MainActivity extends Activity {
             @Override
             public void onCheckedChanged(CompoundButton b, boolean on) {
                 Prefs.set(MainActivity.this, "power", on);
+                // 间隔与闹钟类型都随模式变化，无论服务当前是否在跑都重新下发
                 if (Prefs.get(MainActivity.this, "keepAlive", true)) {
-                    if (ServerService.running) {
-                        BootReceiver.scheduleWatchdog(MainActivity.this);
-                    }
+                    BootReceiver.scheduleWatchdog(MainActivity.this);
                 }
                 Toast.makeText(MainActivity.this,
-                        on ? "省电模式：看门狗每 60 分钟检查一次"
-                                : "高性能模式：看门狗每 15 分钟检查一次",
+                        on ? "省电模式：看门狗 30 分钟检查一次，且不主动唤醒设备"
+                                : "高性能模式：看门狗 15 分钟检查一次，唤醒 CPU 以尽快自愈",
                         Toast.LENGTH_SHORT).show();
             }
         });
@@ -238,6 +238,13 @@ public class MainActivity extends Activity {
                     } catch (Exception ignored) {
                     }
                 }
+            }
+        });
+
+        hint.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onBatteryClick();
             }
         });
 
@@ -434,7 +441,16 @@ public class MainActivity extends Activity {
             urls.setText("");
         }
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-        battery.setText(pm.isIgnoringBatteryOptimizations(getPackageName()) ? "已忽略" : "去设置");
+        boolean whitelisted = pm.isIgnoringBatteryOptimizations(getPackageName());
+        battery.setText(whitelisted ? "已忽略" : "去设置");
+
+        // 未进白名单时，锁屏后系统会限制后台网络，是"消息收不到"的头号原因，运行期间持续提示
+        if (run && !whitelisted) {
+            hint.setText("未加入电池白名单：锁屏后系统会限制后台网络，消息可能延迟或漏收，点击去设置");
+            hint.setVisibility(View.VISIBLE);
+        } else {
+            hint.setVisibility(View.GONE);
+        }
 
         chkNotifVal.setText(notifGranted() ? "已开启" : "去授权");
         chkOverlayVal.setText(Settings.canDrawOverlays(this) ? "已授权" : "去授权");

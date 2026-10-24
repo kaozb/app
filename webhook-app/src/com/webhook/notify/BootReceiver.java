@@ -15,13 +15,21 @@ import android.os.SystemClock;
 public class BootReceiver extends BroadcastReceiver {
 
     static final String ACTION_WATCHDOG = "com.webhook.notify.WATCHDOG";
-    /** 高性能模式：15 分钟检查一次 */
+    /** 高性能模式：15 分钟检查一次，唤醒 CPU 保证尽快自愈 */
     private static final long CHECK_FAST = 15 * 60 * 1000L;
-    /** 省电模式：60 分钟检查一次 */
-    private static final long CHECK_POWER = 60 * 60 * 1000L;
+    /** 省电模式：30 分钟检查一次，且不主动唤醒设备 */
+    private static final long CHECK_POWER = 30 * 60 * 1000L;
 
     private static long interval(Context c) {
         return Prefs.get(c, "power", true) ? CHECK_POWER : CHECK_FAST;
+    }
+
+    private static int alarmType(Context c) {
+        // 省电模式用非唤醒闹钟：设备睡着时不唤醒 CPU，等它自然醒来（或收到网络事件）后再检查。
+        // 服务活着时本来就不需要检查，服务死了手机睡着也收不到消息，因此不牺牲送达时效。
+        return Prefs.get(c, "power", true)
+                ? AlarmManager.ELAPSED_REALTIME
+                : AlarmManager.ELAPSED_REALTIME_WAKEUP;
     }
 
     @Override
@@ -42,6 +50,8 @@ public class BootReceiver extends BroadcastReceiver {
 
         // 只要上次是用户主动运行的，就恢复服务
         if (!Prefs.get(context, "running", false)) return;
+        // 服务已在运行：无需再启动，避免重复创建前台通知与切换端口
+        if (ServerService.running) return;
         Intent i = new Intent(context, ServerService.class);
         i.putExtra(ServerService.EXTRA_PORT, Prefs.getPort(context));
         try {
@@ -55,7 +65,7 @@ public class BootReceiver extends BroadcastReceiver {
         try {
             long iv = interval(c);
             AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
-            am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP,
+            am.setInexactRepeating(alarmType(c),
                     SystemClock.elapsedRealtime() + iv,
                     iv, watchdogIntent(c));
         } catch (Exception ignored) {

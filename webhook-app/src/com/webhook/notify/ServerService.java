@@ -14,6 +14,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.speech.tts.TextToSpeech;
@@ -71,6 +72,8 @@ public class ServerService extends Service {
 
     /** 2 秒内的消息合并成一次提醒，避免高频推送反复响铃 / 刷通知 */
     private final List<String> batch = new ArrayList<String>();
+    private long lastFlushAt = 0;
+    private long lastSpeakAt = 0;
     private final Runnable flushBatch = new Runnable() {
         @Override
         public void run() {
@@ -91,7 +94,7 @@ public class ServerService extends Service {
         nm.createNotificationChannel(new NotificationChannel(CH_SERVICE, "服务状态", NotificationManager.IMPORTANCE_MIN));
         ensureMsgChannel();
         floating = new FloatingManager(this);
-        initTts();
+        // TTS 不在这里初始化：未开启语音朗读时不占用引擎资源，首次朗读时再懒加载
     }
 
     /** 懒初始化 TTS；省电模式下会被释放，下次朗读时再创建 */
@@ -518,18 +521,24 @@ public class ServerService extends Service {
         return line;
     }
 
-    /** 收到一条消息：先落盘，再进入 2 秒合并窗口 */
+    /** 收到一条消息：先落盘；空闲期单条立刻提醒，只有连续消息才进入 2 秒合并窗口 */
     private void onMessage(String msg) {
         String text = msg == null || msg.trim().length() == 0 ? "(空消息)" : msg;
         String time = new SimpleDateFormat("HH:mm", Locale.CHINA).format(new Date());
         HistoryStore.append(this, "Webhook", text, time);
 
-        boolean startTimer;
+        boolean immediate = false;
+        boolean startTimer = false;
         synchronized (batch) {
-            startTimer = batch.isEmpty();
+            if (batch.isEmpty()) {
+                // 上一条提醒已过去 3 秒以上：这是独立消息，立即送达（0 延迟）
+                immediate = SystemClock.elapsedRealtime() - lastFlushAt >= 3000;
+                startTimer = !immediate;
+            }
             if (batch.size() < 100) batch.add(text);
         }
-        if (startTimer) ui.postDelayed(flushBatch, 2000);
+        if (immediate) flush();
+        else if (startTimer) ui.postDelayed(flushBatch, 2000);
     }
 
     /** 合并窗口结束：单条照旧，多条合并成一条提醒 */
@@ -540,6 +549,7 @@ public class ServerService extends Service {
             batch.clear();
         }
         if (items.isEmpty()) return;
+        lastFlushAt = SystemClock.elapsedRealtime();
 
         if (items.size() == 1) {
             deliver("Webhook", items.get(0), items.get(0));
@@ -577,8 +587,13 @@ public class ServerService extends Service {
         }
 
         if (Prefs.get(this, "tts", false)) {
-            String t = body.length() > 120 ? body.substring(0, 120) : body;
-            speak(title + "。" + t);
+            long now = SystemClock.elapsedRealtime();
+            // 合并补发（距上一条朗读不到 3 秒）不再重复念，避免一次消息风暴读两遍
+            if (now - lastSpeakAt > 3000) {
+                lastSpeakAt = now;
+                String t = body.length() > 120 ? body.substring(0, 120) : body;
+                speak(title + "。" + t);
+            }
         }
     }
 

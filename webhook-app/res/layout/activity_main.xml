@@ -124,6 +124,23 @@
                     android:textColor="@color/ink"/>
             </LinearLayout>
 
+            <TextView
+                android:id="@+id/hint"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:text=""
+                android:textColor="@color/warn"
+                android:textSize="11sp"
+                android:lineSpacingExtra="2dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:visibility="gone"/>
+
         </LinearLayout>
 
         <LinearLayout
