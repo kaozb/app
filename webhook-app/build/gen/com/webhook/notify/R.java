@@ -9,28 +9,63 @@ package com.webhook.notify;
 
 public final class R {
   public static final class color {
-    public static final int ic_launcher_background=0x7f010000;
+    public static final int accent=0x7f010000;
+    public static final int accent_deep=0x7f010001;
+    public static final int bg=0x7f010002;
+    public static final int card=0x7f010003;
+    public static final int dark=0x7f010004;
+    public static final int divider=0x7f010005;
+    public static final int hi=0x7f010006;
+    public static final int ic_launcher_background=0x7f010007;
+    public static final int ink=0x7f010008;
+    public static final int muted=0x7f010009;
+    public static final int recess=0x7f01000a;
+    public static final int sh=0x7f01000b;
   }
   public static final class drawable {
-    public static final int ic_launcher_foreground=0x7f020000;
-    public static final int ic_notification=0x7f020001;
+    public static final int bg_card=0x7f020000;
+    public static final int bg_inset=0x7f020001;
+    public static final int bg_pill=0x7f020002;
+    public static final int ic_launcher_foreground=0x7f020003;
+    public static final int ic_notification=0x7f020004;
+    public static final int led=0x7f020005;
+    public static final int led_off=0x7f020006;
+    public static final int switch_thumb=0x7f020007;
+    public static final int switch_track=0x7f020008;
   }
   public static final class id {
-    public static final int port=0x7f030000;
-    public static final int status=0x7f030001;
-    public static final int toggle=0x7f030002;
+    public static final int badge=0x7f030000;
+    public static final int battery=0x7f030001;
+    public static final int f_text=0x7f030002;
+    public static final int f_time=0x7f030003;
+    public static final int f_title=0x7f030004;
+    public static final int led=0x7f030005;
+    public static final int port=0x7f030006;
+    public static final int ring_row=0x7f030007;
+    public static final int ring_val=0x7f030008;
+    public static final int status=0x7f030009;
+    public static final int sw_boot=0x7f03000a;
+    public static final int sw_float_ball=0x7f03000b;
+    public static final int sw_float_msg=0x7f03000c;
+    public static final int sw_notify=0x7f03000d;
+    public static final int sw_sound=0x7f03000e;
+    public static final int sw_tts=0x7f03000f;
+    public static final int sw_vibrate=0x7f030010;
+    public static final int toggle=0x7f030011;
+    public static final int urls=0x7f030012;
   }
   public static final class layout {
     public static final int activity_main=0x7f040000;
+    public static final int floating_msg=0x7f040001;
   }
   public static final class mipmap {
     public static final int ic_launcher=0x7f050000;
   }
   public static final class string {
     public static final int app_name=0x7f060000;
-    public static final int hint=0x7f060001;
-    public static final int port_label=0x7f060002;
-    public static final int status_stopped=0x7f060003;
-    public static final int toggle_label=0x7f060004;
+  }
+  public static final class style {
+    public static final int AppTheme=0x7f070000;
+    public static final int NeoSwitch=0x7f070001;
   }
 }

@@ -1,8 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Webhook</string>
-    <string name="status_stopped">已停止</string>
-    <string name="port_label">监听端口（1-65535）</string>
-    <string name="toggle_label">启动 Webhook 服务</string>
-    <string name="hint">向 http://手机IP:端口 发送 POST 请求，收到的消息会以系统通知显示。\n\n支持：JSON（自动提取 title / text / message / content 等字段）、表单参数（?text=xxx 或 message=xxx）、纯文本。\n\n修改端口：先关闭开关，改完再打开。</string>
 </resources>
