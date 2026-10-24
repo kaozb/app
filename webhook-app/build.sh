@@ -1,6 +1,6 @@
 #!/bin/sh
 # Webhook 极简安卓 App 构建脚本（无需 Gradle）
-# 依赖: JDK 8+ (javac/keytool)、Android build-tools 34.0.0、platforms;android-34
+# 依赖: JDK 8+ (javac/keytool)、Android build-tools 35.0.0、platforms;android-34
 # 用法: ANDROID_SDK=<sdk路径> ./build.sh
 set -e
 cd "$(dirname "$0")"
@@ -31,6 +31,6 @@ javac -source 1.8 -target 1.8 -bootclasspath "$PLATFORM" -encoding UTF-8 -Xlint:
     -keystore debug.keystore -storepass android -keypass android \
     -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
 "$BT/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android \
-    --out Webhook.apk "$OUT/aligned.apk"
+    --v4-signing-enabled false --out Webhook.apk "$OUT/aligned.apk"
 
 echo "OK -> $(pwd)/Webhook.apk"

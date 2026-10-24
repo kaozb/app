@@ -36,7 +36,7 @@ public class MainActivity extends Activity {
     private EditText portEdit;
     private Switch toggle;
     private TextView status, urls, ringVal, battery, svcLabel;
-    private TextView chkNotifVal, chkOverlayVal, chkBatteryVal;
+    private TextView chkNotifVal, chkOverlayVal;
     private View led;
     private final Handler handler = new Handler();
 
@@ -63,7 +63,6 @@ public class MainActivity extends Activity {
         svcLabel = findViewById(R.id.svc_label);
         chkNotifVal = findViewById(R.id.chk_notif_val);
         chkOverlayVal = findViewById(R.id.chk_overlay_val);
-        chkBatteryVal = findViewById(R.id.chk_battery_val);
 
         portEdit.setText(String.valueOf(Prefs.getPort(this)));
         ringVal.setText(ringTitle());
@@ -239,20 +238,6 @@ public class MainActivity extends Activity {
                     } catch (Exception ignored) {
                     }
                 }
-            }
-        });
-
-        findViewById(R.id.chk_battery).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                onBatteryClick();
-            }
-        });
-
-        findViewById(R.id.test_btn).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                ServerService.testMessage(MainActivity.this);
             }
         });
 
@@ -453,7 +438,6 @@ public class MainActivity extends Activity {
 
         chkNotifVal.setText(notifGranted() ? "已开启" : "去授权");
         chkOverlayVal.setText(Settings.canDrawOverlays(this) ? "已授权" : "去授权");
-        chkBatteryVal.setText(pm.isIgnoringBatteryOptimizations(getPackageName()) ? "已加入" : "去设置");
     }
 
     static String localUrls(int port) {

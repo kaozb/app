@@ -772,62 +772,6 @@
                     android:maxLines="1"/>
             </LinearLayout>
 
-            <LinearLayout
-                android:id="@+id/chk_battery"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:background="@drawable/bg_pill"
-                android:paddingStart="12dp"
-                android:paddingEnd="8dp"
-                android:paddingTop="10dp"
-                android:paddingBottom="10dp"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?android:attr/selectableItemBackground">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="电池优化白名单"
-                    android:textColor="@color/ink"
-                    android:textSize="14sp"
-                    android:maxLines="1"
-                    android:ellipsize="end"/>
-
-                <TextView
-                    android:id="@+id/chk_battery_val"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:background="@drawable/bg_pill"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:paddingTop="5dp"
-                    android:paddingBottom="5dp"
-                    android:text="去设置"
-                    android:textColor="@color/dark"
-                    android:textSize="11sp"
-                    android:maxLines="1"/>
-            </LinearLayout>
-
-            <TextView
-                android:id="@+id/test_btn"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_margin="4dp"
-                android:background="@drawable/bg_pill"
-                android:gravity="center"
-                android:paddingTop="11dp"
-                android:paddingBottom="11dp"
-                android:text="发送测试消息"
-                android:textColor="@color/ink"
-                android:textSize="14sp"
-                android:clickable="true"
-                android:focusable="true"
-                android:foreground="?android:attr/selectableItemBackground"/>
         </LinearLayout>
 
         <TextView

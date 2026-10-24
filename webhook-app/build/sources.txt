@@ -1,8 +1,0 @@
-src/com/webhook/notify/ServerService.java
-src/com/webhook/notify/ClipboardActivity.java
-src/com/webhook/notify/MainActivity.java
-src/com/webhook/notify/FloatingManager.java
-src/com/webhook/notify/Prefs.java
-src/com/webhook/notify/HistoryStore.java
-src/com/webhook/notify/BootReceiver.java
-build/gen/com/webhook/notify/R.java
