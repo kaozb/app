@@ -266,6 +266,7 @@ public class ServerService extends Service {
                         listenPort = -1;
                         // 端口被占用属于无法自愈的错误，停止看门狗重试
                         Prefs.setRunning(ServerService.this, false);
+                        BootReceiver.cancelWatchdog(ServerService.this);
                         stopSelf();
                     }
                 }

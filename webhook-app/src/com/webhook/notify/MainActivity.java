@@ -52,6 +52,8 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        // 服务未运行（用户已停止或上次未启动）时不保留任何看门狗遗留定时器
+        if (!Prefs.get(this, "running", false)) BootReceiver.cancelWatchdog(this);
 
         led = findViewById(R.id.led);
         status = findViewById(R.id.status);
@@ -91,6 +93,8 @@ public class MainActivity extends Activity {
                     maybeAskBattery();
                 } else {
                     Prefs.setRunning(MainActivity.this, false);
+                    // 服务已停止：同步撤掉看门狗，避免空转检查
+                    BootReceiver.cancelWatchdog(MainActivity.this);
                     stopService(new Intent(MainActivity.this, ServerService.class));
                     syncUi();
                 }
@@ -108,7 +112,8 @@ public class MainActivity extends Activity {
             @Override
             public void onCheckedChanged(CompoundButton b, boolean on) {
                 Prefs.set(MainActivity.this, "keepAlive", on);
-                if (on) {
+                // 服务没在运行时不保留看门狗，运行中才需要它兜底
+                if (on && ServerService.running) {
                     BootReceiver.scheduleWatchdog(MainActivity.this);
                 } else {
                     BootReceiver.cancelWatchdog(MainActivity.this);
@@ -149,8 +154,8 @@ public class MainActivity extends Activity {
             @Override
             public void onCheckedChanged(CompoundButton b, boolean on) {
                 Prefs.set(MainActivity.this, "power", on);
-                // 间隔与闹钟类型都随模式变化，无论服务当前是否在跑都重新下发
-                if (Prefs.get(MainActivity.this, "keepAlive", true)) {
+                // 间隔与闹钟类型都随模式变化；只有服务在运行时才需要看门狗
+                if (Prefs.get(MainActivity.this, "keepAlive", true) && ServerService.running) {
                     BootReceiver.scheduleWatchdog(MainActivity.this);
                 }
                 Toast.makeText(MainActivity.this,

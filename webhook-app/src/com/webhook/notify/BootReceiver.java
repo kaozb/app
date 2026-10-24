@@ -39,23 +39,33 @@ public class BootReceiver extends BroadcastReceiver {
                 || "android.intent.action.QUICKBOOT_POWERON".equals(action);
 
         if (boot) {
-            if (Prefs.get(context, "keepAlive", true)) scheduleWatchdog(context);
-            if (!Prefs.get(context, "boot", false)) return;
+            // 未开启「开机自启」：不拉起服务，也不保留看门狗
+            if (!Prefs.get(context, "boot", false)) {
+                cancelWatchdog(context);
+                return;
+            }
         } else if (!ACTION_WATCHDOG.equals(action)) {
             return;
         }
 
         // 后台保活关闭后不再自动拉起
-        if (!Prefs.get(context, "keepAlive", true)) return;
+        if (!Prefs.get(context, "keepAlive", true)) {
+            cancelWatchdog(context);
+            return;
+        }
 
-        // 只要上次是用户主动运行的，就恢复服务
-        if (!Prefs.get(context, "running", false)) return;
+        // 服务未启动（用户已停止 / 从未启动）：保活暂停，撤掉定时器避免空转
+        if (!Prefs.get(context, "running", false)) {
+            cancelWatchdog(context);
+            return;
+        }
         // 服务已在运行：无需再启动，避免重复创建前台通知与切换端口
         if (ServerService.running) return;
         Intent i = new Intent(context, ServerService.class);
         i.putExtra(ServerService.EXTRA_PORT, Prefs.getPort(context));
         try {
             context.startForegroundService(i);
+            scheduleWatchdog(context);
         } catch (Exception ignored) {
         }
     }
@@ -82,7 +92,7 @@ public class BootReceiver extends BroadcastReceiver {
         }
     }
 
-    /** 关闭「后台保活」时取消定时器 */
+    /** 关闭「后台保活」或服务未运行时取消定时器 */
     static void cancelWatchdog(Context c) {
         try {
             AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
