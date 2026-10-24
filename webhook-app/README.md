@@ -38,8 +38,8 @@ ANDROID_SDK=/path/to/sdk bash build.sh
 工作流：[.github/workflows/build-apk.yml](file:///workspace/.github/workflows/build-apk.yml)
 
 - **触发**：push 到 `main`、推送 `v*` 标签、手动 `workflow_dispatch`
-- **环境**：Ubuntu runner + JDK 17 + `android-actions/setup-android`，安装 `platforms;android-34`、`build-tools;35.0.0`
-- **构建**：`ANDROID_SDK=$ANDROID_HOME ./build.sh`，复用仓库内的 `debug.keystore`，保证各次构建签名一致、可直接覆盖安装
+- **环境**：Ubuntu runner 预装的 Android SDK（**不使用** `android-actions/setup-android`：它会安装已下架的 `tools` 包，在 cmdline-tools 16 上必然失败），组件缺失时才用 `sdkmanager` 补装 `platforms;android-34`、`build-tools;35.0.0`；JDK 17
+- **构建**：工作流把 SDK 路径写入 `ANDROID_SDK` 环境变量后直接执行 `./build.sh`，复用仓库内的 `debug.keystore`，保证各次构建签名一致、可直接覆盖安装
 - **产物**：上传 `Webhook-apk` artifact，同时发布到 Release
 - **发布策略**：`main` 推送维护滚动预发布 `latest-build`（同名 APK 自动覆盖）；`v*` 标签生成同名正式 Release
 

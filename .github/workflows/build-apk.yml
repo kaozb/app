@@ -27,17 +27,32 @@ jobs:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # 不使用 android-actions/setup-android：其内部会安装已下架的 "tools" 包，
+      # 在 cmdline-tools 16 上必然失败。改为直接使用 runner 预装的 SDK。
+      - name: Locate Android SDK
+        run: |
+          SDK="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "ANDROID_SDK=$SDK" >> "$GITHUB_ENV"
+          echo "使用 SDK: $SDK"
+          ls "$SDK/build-tools" 2>/dev/null || true
+          ls "$SDK/platforms" 2>/dev/null || true
 
-      - name: Install SDK components
-        run: sdkmanager --install "platforms;android-34" "build-tools;35.0.0"
+      - name: Ensure SDK components
+        run: |
+          if [ -x "$ANDROID_SDK/build-tools/35.0.0/aapt2" ] && [ -f "$ANDROID_SDK/platforms/android-34/android.jar" ]; then
+            echo "build-tools 35.0.0 与 platform 34 已就绪"
+            exit 0
+          fi
+          SDKMGR="$ANDROID_SDK/cmdline-tools/latest/bin/sdkmanager"
+          [ -x "$SDKMGR" ] || SDKMGR="$(command -v sdkmanager)"
+          yes | "$SDKMGR" --licenses >/dev/null 2>&1 || true
+          "$SDKMGR" --install "platforms;android-34" "build-tools;35.0.0"
 
       - name: Build APK
         working-directory: webhook-app
         run: |
           chmod +x build.sh
-          ANDROID_SDK="$ANDROID_HOME" ./build.sh
+          ./build.sh
           ls -l Webhook.apk
 
       - name: Upload artifact
