@@ -15,7 +15,14 @@ import android.os.SystemClock;
 public class BootReceiver extends BroadcastReceiver {
 
     static final String ACTION_WATCHDOG = "com.webhook.notify.WATCHDOG";
-    private static final long CHECK_INTERVAL = 15 * 60 * 1000L;
+    /** 高性能模式：15 分钟检查一次 */
+    private static final long CHECK_FAST = 15 * 60 * 1000L;
+    /** 省电模式：60 分钟检查一次 */
+    private static final long CHECK_POWER = 60 * 60 * 1000L;
+
+    private static long interval(Context c) {
+        return Prefs.get(c, "power", true) ? CHECK_POWER : CHECK_FAST;
+    }
 
     @Override
     public void onReceive(Context context, Intent intent) {
@@ -43,13 +50,14 @@ public class BootReceiver extends BroadcastReceiver {
         }
     }
 
-    /** 每 15 分钟检查一次，进程被清理后重新拉起 */
+    /** 定时检查进程是否还在，被清理后重新拉起（间隔随「省电模式」变化） */
     static void scheduleWatchdog(Context c) {
         try {
+            long iv = interval(c);
             AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
             am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-                    SystemClock.elapsedRealtime() + CHECK_INTERVAL,
-                    CHECK_INTERVAL, watchdogIntent(c));
+                    SystemClock.elapsedRealtime() + iv,
+                    iv, watchdogIntent(c));
         } catch (Exception ignored) {
         }
     }

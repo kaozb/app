@@ -2,6 +2,7 @@ package com.webhook.notify;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.ActivityManager;
 import android.app.AlertDialog;
 import android.app.NotificationManager;
 import android.content.DialogInterface;
@@ -119,6 +120,40 @@ public class MainActivity extends Activity {
                 Prefs.set(MainActivity.this, "keepAliveTip", on);
                 // 重新开启提醒后，允许再次弹出白名单引导
                 if (on) Prefs.set(MainActivity.this, "batAsked", false);
+            }
+        });
+
+        Switch swHide = (Switch) findViewById(R.id.sw_hide);
+        swHide.setChecked(Prefs.get(this, "hideRecents", false));
+        swHide.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                Prefs.set(MainActivity.this, "hideRecents", on);
+                boolean ok = applyHideRecents();
+                if (on && !ok) {
+                    Prefs.set(MainActivity.this, "hideRecents", false);
+                    Toast.makeText(MainActivity.this,
+                            "本机系统不允许隐藏最近任务", Toast.LENGTH_SHORT).show();
+                    b.setChecked(false);
+                }
+            }
+        });
+
+        Switch swPower = (Switch) findViewById(R.id.sw_power);
+        swPower.setChecked(Prefs.get(this, "power", true));
+        swPower.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                Prefs.set(MainActivity.this, "power", on);
+                if (Prefs.get(MainActivity.this, "keepAlive", true)) {
+                    if (ServerService.running) {
+                        BootReceiver.scheduleWatchdog(MainActivity.this);
+                    }
+                }
+                Toast.makeText(MainActivity.this,
+                        on ? "省电模式：看门狗每 60 分钟检查一次"
+                                : "高性能模式：看门狗每 15 分钟检查一次",
+                        Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -313,7 +348,23 @@ public class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         syncUi();
+        applyHideRecents();
         handler.post(poll);
+    }
+
+    /** 按开关设置当前任务是否出现在最近任务列表，失败返回 false */
+    private boolean applyHideRecents() {
+        boolean hide = Prefs.get(this, "hideRecents", false);
+        try {
+            ActivityManager am = (ActivityManager) getSystemService(ACTIVITY_SERVICE);
+            if (am == null) return false;
+            java.util.List<ActivityManager.AppTask> tasks = am.getAppTasks();
+            if (tasks == null) return false;
+            for (ActivityManager.AppTask t : tasks) t.setExcludeFromRecents(hide);
+            return true;
+        } catch (Throwable e) {
+            return false;
+        }
     }
 
     @Override
