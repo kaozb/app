@@ -105,7 +105,6 @@ public class ServerService extends Service {
                 startServer(port);
             }
         }
-        if (floating != null) floating.setBallEnabled(Prefs.get(this, "floatBall", false));
         Prefs.setRunning(this, true);
         return START_STICKY;
     }
@@ -130,12 +129,6 @@ public class ServerService extends Service {
         instance = null;
         Prefs.setRunning(this, false);
         super.onDestroy();
-    }
-
-    /** MainActivity 切换悬浮球开关时同步到正在运行的服务 */
-    static void applyBallSetting(Context c) {
-        ServerService s = instance;
-        if (s != null && s.floating != null) s.floating.setBallEnabled(Prefs.get(c, "floatBall", false));
     }
 
     /** 切换「常驻通知」开关时立即生效 */

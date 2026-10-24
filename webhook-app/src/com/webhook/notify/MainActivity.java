@@ -31,7 +31,7 @@ public class MainActivity extends Activity {
 
     private EditText portEdit;
     private Switch toggle;
-    private TextView status, badge, urls, ringVal, battery;
+    private TextView status, urls, ringVal, battery;
     private View led;
     private final Handler handler = new Handler();
 
@@ -50,7 +50,6 @@ public class MainActivity extends Activity {
 
         led = findViewById(R.id.led);
         status = findViewById(R.id.status);
-        badge = findViewById(R.id.badge);
         urls = findViewById(R.id.urls);
         portEdit = findViewById(R.id.port);
         toggle = findViewById(R.id.toggle);
@@ -120,7 +119,6 @@ public class MainActivity extends Activity {
         });
 
         bindFloat(R.id.sw_float_msg, "floatMsg");
-        bindFloat(R.id.sw_float_ball, "floatBall");
 
         findViewById(R.id.ring_row).setOnClickListener(new View.OnClickListener() {
             @Override
@@ -189,7 +187,6 @@ public class MainActivity extends Activity {
                     return;
                 }
                 Prefs.set(MainActivity.this, key, on);
-                if ("floatBall".equals(key)) ServerService.applyBallSetting(MainActivity.this);
             }
         });
     }
@@ -252,18 +249,15 @@ public class MainActivity extends Activity {
         if (run) {
             status.setText("服务运行中");
             status.setTextColor(getColor(R.color.accent_deep));
-            badge.setText("0.0.0.0:" + ServerService.listenPort);
             urls.setText(localUrls(ServerService.listenPort));
         } else if (ServerService.lastError != null) {
             status.setText("启动失败");
             status.setTextColor(getColor(R.color.muted));
             urls.setText(ServerService.lastError);
-            badge.setText("—");
         } else {
             status.setText("已停止");
             status.setTextColor(getColor(R.color.muted));
             urls.setText("打开开关后，这里会显示接收地址");
-            badge.setText("—");
         }
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         battery.setText(pm.isIgnoringBatteryOptimizations(getPackageName()) ? "已忽略" : "去设置");

@@ -34,32 +34,30 @@ public final class R {
     public static final int switch_track=0x7f020008;
   }
   public static final class id {
-    public static final int badge=0x7f030000;
-    public static final int battery=0x7f030001;
-    public static final int clip_btn=0x7f030002;
-    public static final int empty=0x7f030003;
-    public static final int f_text=0x7f030004;
-    public static final int f_time=0x7f030005;
-    public static final int f_title=0x7f030006;
-    public static final int keep=0x7f030007;
-    public static final int led=0x7f030008;
-    public static final int list=0x7f030009;
-    public static final int m_text=0x7f03000a;
-    public static final int m_time=0x7f03000b;
-    public static final int port=0x7f03000c;
-    public static final int ring_row=0x7f03000d;
-    public static final int ring_val=0x7f03000e;
-    public static final int status=0x7f03000f;
-    public static final int sw_boot=0x7f030010;
-    public static final int sw_fgs=0x7f030011;
-    public static final int sw_float_ball=0x7f030012;
-    public static final int sw_float_msg=0x7f030013;
-    public static final int sw_notify=0x7f030014;
-    public static final int sw_sound=0x7f030015;
-    public static final int sw_tts=0x7f030016;
-    public static final int sw_vibrate=0x7f030017;
-    public static final int toggle=0x7f030018;
-    public static final int urls=0x7f030019;
+    public static final int battery=0x7f030000;
+    public static final int clip_btn=0x7f030001;
+    public static final int empty=0x7f030002;
+    public static final int f_text=0x7f030003;
+    public static final int f_time=0x7f030004;
+    public static final int f_title=0x7f030005;
+    public static final int keep=0x7f030006;
+    public static final int led=0x7f030007;
+    public static final int list=0x7f030008;
+    public static final int m_text=0x7f030009;
+    public static final int m_time=0x7f03000a;
+    public static final int port=0x7f03000b;
+    public static final int ring_row=0x7f03000c;
+    public static final int ring_val=0x7f03000d;
+    public static final int status=0x7f03000e;
+    public static final int sw_boot=0x7f03000f;
+    public static final int sw_fgs=0x7f030010;
+    public static final int sw_float_msg=0x7f030011;
+    public static final int sw_notify=0x7f030012;
+    public static final int sw_sound=0x7f030013;
+    public static final int sw_tts=0x7f030014;
+    public static final int sw_vibrate=0x7f030015;
+    public static final int toggle=0x7f030016;
+    public static final int urls=0x7f030017;
   }
   public static final class layout {
     public static final int activity_clipboard=0x7f040000;
