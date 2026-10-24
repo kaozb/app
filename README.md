@@ -27,11 +27,12 @@
 ### 构建
 
 ```bash
+cd webhook-app
 bash build.sh            # 使用默认 SDK 路径
 ANDROID_SDK=/path/to/sdk bash build.sh
 ```
 
-产物：`Webhook.apk`（约 50KB）。
+产物：`webhook-app/Webhook.apk`（约 50KB）。
 
 ### 持续集成（GitHub Actions）
 
