@@ -36,6 +36,7 @@ public class MainActivity extends Activity {
     private EditText portEdit;
     private Switch toggle;
     private TextView status, urls, ringVal, battery, svcLabel;
+    private TextView chkNotifVal, chkOverlayVal, chkBatteryVal;
     private View led;
     private final Handler handler = new Handler();
 
@@ -60,6 +61,9 @@ public class MainActivity extends Activity {
         ringVal = findViewById(R.id.ring_val);
         battery = findViewById(R.id.battery);
         svcLabel = findViewById(R.id.svc_label);
+        chkNotifVal = findViewById(R.id.chk_notif_val);
+        chkOverlayVal = findViewById(R.id.chk_overlay_val);
+        chkBatteryVal = findViewById(R.id.chk_battery_val);
 
         portEdit.setText(String.valueOf(Prefs.getPort(this)));
         ringVal.setText(ringTitle());
@@ -208,41 +212,84 @@ public class MainActivity extends Activity {
             }
         });
 
-        findViewById(R.id.reset).setOnClickListener(new View.OnClickListener() {
+        findViewById(R.id.chk_notif).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                new AlertDialog.Builder(MainActivity.this)
-                        .setTitle("重置服务")
-                        .setMessage("将停止服务并清除全部设置与消息记录，且不可恢复。")
-                        .setNegativeButton("取消", null)
-                        .setPositiveButton("重置", new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface d, int w) {
-                                stopService(new Intent(MainActivity.this, ServerService.class));
-                                Prefs.clear(MainActivity.this);
-                                HistoryStore.clear(MainActivity.this);
-                                getSystemService(NotificationManager.class).cancelAll();
-                                ServerService.running = false;
-                                ServerService.listenPort = -1;
-                                ServerService.lastError = null;
-                                recreate();
-                            }
-                        })
-                        .show();
+                if (notifGranted()) {
+                    Toast.makeText(MainActivity.this, "通知权限已开启", Toast.LENGTH_SHORT).show();
+                } else if (Build.VERSION.SDK_INT >= 33 &&
+                        checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS)
+                                != PackageManager.PERMISSION_GRANTED) {
+                    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIF);
+                } else {
+                    openNotificationSettings();
+                }
+            }
+        });
+
+        findViewById(R.id.chk_overlay).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (Settings.canDrawOverlays(MainActivity.this)) {
+                    Toast.makeText(MainActivity.this, "悬浮窗权限已授权", Toast.LENGTH_SHORT).show();
+                } else {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:" + getPackageName())));
+                    } catch (Exception ignored) {
+                    }
+                }
+            }
+        });
+
+        findViewById(R.id.chk_battery).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                onBatteryClick();
+            }
+        });
+
+        findViewById(R.id.test_btn).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                ServerService.testMessage(MainActivity.this);
             }
         });
 
         battery.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-                if (pm.isIgnoringBatteryOptimizations(getPackageName())) {
-                    Toast.makeText(MainActivity.this, "已在电池优化白名单中", Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                openBatterySettings();
+                onBatteryClick();
             }
         });
+    }
+
+    private void onBatteryClick() {
+        PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+        if (pm.isIgnoringBatteryOptimizations(getPackageName())) {
+            Toast.makeText(MainActivity.this, "已在电池优化白名单中", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        openBatterySettings();
+    }
+
+    private boolean notifGranted() {
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        return nm != null && nm.areNotificationsEnabled();
+    }
+
+    private void openNotificationSettings() {
+        try {
+            Intent i = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+            i.putExtra(Settings.EXTRA_APP_PACKAGE, getPackageName());
+            startActivity(i);
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                        Uri.parse("package:" + getPackageName())));
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     /** 首次启动服务且未加入白名单时，引导一次 */
@@ -403,6 +450,10 @@ public class MainActivity extends Activity {
         }
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
         battery.setText(pm.isIgnoringBatteryOptimizations(getPackageName()) ? "已忽略" : "去设置");
+
+        chkNotifVal.setText(notifGranted() ? "已开启" : "去授权");
+        chkOverlayVal.setText(Settings.canDrawOverlays(this) ? "已授权" : "去授权");
+        chkBatteryVal.setText(pm.isIgnoringBatteryOptimizations(getPackageName()) ? "已加入" : "去设置");
     }
 
     static String localUrls(int port) {

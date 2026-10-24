@@ -92,7 +92,7 @@ final class HistoryStore {
         }
     }
 
-    /** 重置：删除全部历史 */
+    /** 剪切板页「清空」：删除全部历史 */
     static synchronized void clear(Context c) {
         try {
             file(c).delete();

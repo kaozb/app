@@ -248,6 +248,17 @@ public class ServerService extends Service {
         s.speak("语音朗读已开启");
     }
 
+    /** 自检：发一条测试消息，走完整提醒链路但不写入历史 */
+    static void testMessage(Context c) {
+        ServerService s = instance;
+        if (s == null) {
+            Toast.makeText(c, "请先开启 Webhook 服务", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        s.deliver("Webhook 测试", "这是一条测试消息", "这是一条测试消息");
+        Toast.makeText(c, "已触发测试提醒（不写入历史）", Toast.LENGTH_SHORT).show();
+    }
+
     /** 自主播放提示铃声：不依赖通知渠道（渠道的声音设置一旦创建即被系统锁定） */
     private void playAlert() {
         boolean sound = Prefs.get(this, "sound", true);

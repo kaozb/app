@@ -52,9 +52,4 @@ final class Prefs {
     static void setRunning(Context c, boolean v) {
         set(c, "running", v);
     }
-
-    /** 重置：清空全部设置 */
-    static void clear(Context c) {
-        p(c).edit().clear().apply();
-    }
 }

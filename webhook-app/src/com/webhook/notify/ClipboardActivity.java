@@ -52,6 +52,32 @@ public class ClipboardActivity extends Activity {
                 askKeep();
             }
         });
+        findViewById(R.id.clear).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                askClear();
+            }
+        });
+    }
+
+    private void askClear() {
+        if (data.isEmpty()) {
+            Toast.makeText(this, "没有可清空的消息", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        new AlertDialog.Builder(this)
+                .setTitle("清空剪切板")
+                .setMessage("将删除全部历史消息，不可恢复。")
+                .setNegativeButton("取消", null)
+                .setPositiveButton("清空", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface d, int w) {
+                        HistoryStore.clear(ClipboardActivity.this);
+                        refresh();
+                        Toast.makeText(ClipboardActivity.this, "已清空", Toast.LENGTH_SHORT).show();
+                    }
+                })
+                .show();
     }
 
     @Override
