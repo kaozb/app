@@ -33,6 +33,15 @@ final class Prefs {
         p(c).edit().putString("ringtone", v).apply();
     }
 
+    /** 保留消息条数，默认 50 */
+    static int keep(Context c) {
+        return p(c).getInt("keep", 50);
+    }
+
+    static void keep(Context c, int v) {
+        p(c).edit().putInt("keep", v).apply();
+    }
+
     /** 服务是否处于运行状态（用于开机自启时恢复上次状态） */
     static void setRunning(Context c, boolean v) {
         set(c, "running", v);
