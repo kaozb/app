@@ -17,8 +17,6 @@ import android.os.Looper;
 import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
-import android.speech.tts.TextToSpeech;
-import android.widget.Toast;
 
 import org.json.JSONObject;
 
@@ -55,25 +53,13 @@ public class ServerService extends Service {
     private ServerThread thread;
     private int nextNotifyId = 2;
     private FloatingManager floating;
-    private TextToSpeech tts;
-    private volatile boolean ttsReady = false;
-    private String pendingSpeak;
     private final Handler ui = new Handler(Looper.getMainLooper());
     private Ringtone lastRing;
     private String curMsgChannel;
 
-    /** 省电模式：朗读闲置 60 秒后释放引擎，下次用到再初始化 */
-    private final Runnable ttsRelease = new Runnable() {
-        @Override
-        public void run() {
-            shutdownTts();
-        }
-    };
-
     /** 2 秒内的消息合并成一次提醒，避免高频推送反复响铃 / 刷通知 */
     private final List<String> batch = new ArrayList<String>();
     private long lastFlushAt = 0;
-    private long lastSpeakAt = 0;
     private final Runnable flushBatch = new Runnable() {
         @Override
         public void run() {
@@ -94,90 +80,6 @@ public class ServerService extends Service {
         nm.createNotificationChannel(new NotificationChannel(CH_SERVICE, "服务状态", NotificationManager.IMPORTANCE_MIN));
         ensureMsgChannel();
         floating = new FloatingManager(this);
-        // TTS 不在这里初始化：未开启语音朗读时不占用引擎资源，首次朗读时再懒加载
-    }
-
-    /** 懒初始化 TTS；省电模式下会被释放，下次朗读时再创建 */
-    private void initTts() {
-        if (tts != null) return;
-        tts = new TextToSpeech(this, new TextToSpeech.OnInitListener() {
-            @Override
-            public void onInit(int status) {
-                if (status == TextToSpeech.SUCCESS && tts != null) {
-                    try {
-                        int r = tts.setLanguage(Locale.CHINA);
-                        if (r < TextToSpeech.LANG_AVAILABLE) tts.setLanguage(Locale.US);
-                        tts.setAudioAttributes(new AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_NOTIFICATION)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
-                                .build());
-                        ttsReady = true;
-                    } catch (Exception ignored) {
-                    }
-                    if (pendingSpeak != null) {
-                        String s = pendingSpeak;
-                        pendingSpeak = null;
-                        speakNow(s);
-                    }
-                } else {
-                    ttsReady = false;
-                    if (tts != null) {
-                        try {
-                            tts.shutdown();
-                        } catch (Exception ignored) {
-                        }
-                        tts = null;
-                    }
-                    pendingSpeak = null;
-                    // 仅在用户主动使用语音朗读时提示，避免服务启动时打扰
-                    if (Prefs.get(ServerService.this, "tts", false)) {
-                        Toast.makeText(ServerService.this,
-                                "本机未找到语音引擎（TTS）：请在系统设置中安装或启用「文字转语音」",
-                                Toast.LENGTH_LONG).show();
-                    }
-                }
-            }
-        });
-    }
-
-    private void speakNow(String text) {
-        if (!ttsReady || tts == null) {
-            pendingSpeak = text;
-            return;
-        }
-        try {
-            tts.speak(text, TextToSpeech.QUEUE_ADD, null,
-                    "webhook_" + System.currentTimeMillis());
-        } catch (Exception ignored) {
-        }
-    }
-
-    /** 朗读一段文本；省电模式会在闲置 60 秒后释放引擎 */
-    private void speak(String text) {
-        pendingSpeak = text;
-        if (tts == null) initTts();
-        if (ttsReady) {
-            pendingSpeak = null;
-            speakNow(text);
-        }
-        if (Prefs.get(this, "power", true)) {
-            ui.removeCallbacks(ttsRelease);
-            ui.postDelayed(ttsRelease, 60000);
-        } else {
-            ui.removeCallbacks(ttsRelease);
-        }
-    }
-
-    private void shutdownTts() {
-        if (tts == null) return;
-        try {
-            tts.stop();
-            tts.shutdown();
-        } catch (Exception ignored) {
-        }
-        tts = null;
-        ttsReady = false;
-        pendingSpeak = null;
     }
 
     @Override
@@ -217,9 +119,7 @@ public class ServerService extends Service {
         listenPort = -1;
         if (floating != null) floating.shutdown();
         stopRing();
-        ui.removeCallbacks(ttsRelease);
         ui.removeCallbacks(flushBatch);
-        shutdownTts();
         instance = null;
         // 不在这里清 running 标记：被系统回收时保留，看门狗才能自动拉起
         super.onDestroy();
@@ -238,17 +138,6 @@ public class ServerService extends Service {
             }
         } catch (Exception ignored) {
         }
-    }
-
-    /** 打开语音朗读开关时立即试读一句，便于确认 TTS 可用 */
-    static void testTts(Context c) {
-        ServerService s = instance;
-        if (s == null) {
-            Toast.makeText(c, "请先开启 Webhook 服务，再试语音朗读", Toast.LENGTH_SHORT).show();
-            return;
-        }
-        // 引擎缺失的提示在初始化回调里处理，这里直接尝试朗读
-        s.speak("语音朗读已开启");
     }
 
     /** 自主播放提示铃声：不依赖通知渠道（渠道的声音设置一旦创建即被系统锁定） */
@@ -584,16 +473,6 @@ public class ServerService extends Service {
         if (floating != null) {
             String f = big.length() > 160 ? big.substring(0, 160) + "…" : big;
             floating.showMessage(title, f);
-        }
-
-        if (Prefs.get(this, "tts", false)) {
-            long now = SystemClock.elapsedRealtime();
-            // 合并补发（距上一条朗读不到 3 秒）不再重复念，避免一次消息风暴读两遍
-            if (now - lastSpeakAt > 3000) {
-                lastSpeakAt = now;
-                String t = body.length() > 120 ? body.substring(0, 120) : body;
-                speak(title + "。" + t);
-            }
         }
     }
 

@@ -182,16 +182,6 @@ public class MainActivity extends Activity {
             }
         });
 
-        Switch swTts = (Switch) findViewById(R.id.sw_tts);
-        swTts.setChecked(Prefs.get(this, "tts", false));
-        swTts.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton b, boolean on) {
-                Prefs.set(MainActivity.this, "tts", on);
-                if (on) ServerService.testTts(MainActivity.this);
-            }
-        });
-
         bindFloat(R.id.sw_float_msg, "floatMsg");
 
         findViewById(R.id.ring_row).setOnClickListener(new View.OnClickListener() {
