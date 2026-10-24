@@ -2,6 +2,9 @@ package com.webhook.notify;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlertDialog;
+import android.app.NotificationManager;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.media.Ringtone;
@@ -31,7 +34,7 @@ public class MainActivity extends Activity {
 
     private EditText portEdit;
     private Switch toggle;
-    private TextView status, urls, ringVal, battery;
+    private TextView status, urls, ringVal, battery, svcLabel;
     private View led;
     private final Handler handler = new Handler();
 
@@ -55,6 +58,7 @@ public class MainActivity extends Activity {
         toggle = findViewById(R.id.toggle);
         ringVal = findViewById(R.id.ring_val);
         battery = findViewById(R.id.battery);
+        svcLabel = findViewById(R.id.svc_label);
 
         portEdit.setText(String.valueOf(Prefs.getPort(this)));
         ringVal.setText(ringTitle());
@@ -134,6 +138,30 @@ public class MainActivity extends Activity {
                 } catch (Exception e) {
                     Toast.makeText(MainActivity.this, "无法打开铃声选择器", Toast.LENGTH_SHORT).show();
                 }
+            }
+        });
+
+        findViewById(R.id.reset).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                new AlertDialog.Builder(MainActivity.this)
+                        .setTitle("重置服务")
+                        .setMessage("将停止服务并清除全部设置与消息记录，且不可恢复。")
+                        .setNegativeButton("取消", null)
+                        .setPositiveButton("重置", new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface d, int w) {
+                                stopService(new Intent(MainActivity.this, ServerService.class));
+                                Prefs.clear(MainActivity.this);
+                                HistoryStore.clear(MainActivity.this);
+                                getSystemService(NotificationManager.class).cancelAll();
+                                ServerService.running = false;
+                                ServerService.listenPort = -1;
+                                ServerService.lastError = null;
+                                recreate();
+                            }
+                        })
+                        .show();
             }
         });
 
@@ -246,6 +274,7 @@ public class MainActivity extends Activity {
         if (toggle.isChecked() != run) toggle.setChecked(run);
         portEdit.setEnabled(!run);
         led.setBackgroundResource(run ? R.drawable.led : R.drawable.led_off);
+        svcLabel.setText(run ? "停止服务" : "启动服务");
         if (run) {
             status.setText("服务运行中");
             status.setTextColor(getColor(R.color.accent_deep));

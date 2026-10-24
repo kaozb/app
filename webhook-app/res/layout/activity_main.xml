@@ -144,9 +144,10 @@
                     android:gravity="center_horizontal">
 
                     <TextView
+                        android:id="@+id/svc_label"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="Webhook 开关"
+                        android:text="启动服务"
                         android:textColor="@color/muted"
                         android:textSize="12sp"
                         android:gravity="center"/>
@@ -177,144 +178,219 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:background="@drawable/bg_card"
-            android:paddingTop="4dp"
-            android:paddingBottom="4dp"
+            android:padding="12dp"
             android:layout_marginTop="8dp">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="11dp"
-                android:paddingBottom="11dp">
+                android:orientation="horizontal">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
-                    android:text="常驻通知"
-                    android:textColor="@color/ink"
-                    android:textSize="15sp"/>
+                    android:layout_margin="4dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_pill"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp">
 
-                <Switch
-                    android:id="@+id/sw_fgs"
-                    style="@style/NeoSwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="常驻通知"
+                        android:textColor="@color/ink"
+                        android:textSize="14sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <Switch
+                        android:id="@+id/sw_fgs"
+                        style="@style/NeoSwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_margin="4dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_pill"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="消息通知"
+                        android:textColor="@color/ink"
+                        android:textSize="14sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <Switch
+                        android:id="@+id/sw_notify"
+                        style="@style/NeoSwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+                </LinearLayout>
             </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginStart="16dp"
-                android:background="@color/divider"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="11dp"
-                android:paddingBottom="11dp">
+                android:orientation="horizontal">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
-                    android:text="消息通知"
-                    android:textColor="@color/ink"
-                    android:textSize="15sp"/>
+                    android:layout_margin="4dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_pill"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp">
 
-                <Switch
-                    android:id="@+id/sw_notify"
-                    style="@style/NeoSwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="声音"
+                        android:textColor="@color/ink"
+                        android:textSize="14sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <Switch
+                        android:id="@+id/sw_sound"
+                        style="@style/NeoSwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:layout_margin="4dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_pill"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp">
+
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="震动"
+                        android:textColor="@color/ink"
+                        android:textSize="14sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <Switch
+                        android:id="@+id/sw_vibrate"
+                        style="@style/NeoSwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+                </LinearLayout>
             </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginStart="16dp"
-                android:background="@color/divider"/>
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="11dp"
-                android:paddingBottom="11dp">
+                android:orientation="horizontal">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
-                    android:text="声音"
-                    android:textColor="@color/ink"
-                    android:textSize="15sp"/>
+                    android:layout_margin="4dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_pill"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp">
 
-                <Switch
-                    android:id="@+id/sw_sound"
-                    style="@style/NeoSwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
-            </LinearLayout>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="悬浮窗"
+                        android:textColor="@color/ink"
+                        android:textSize="14sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginStart="16dp"
-                android:background="@color/divider"/>
+                    <Switch
+                        android:id="@+id/sw_float_msg"
+                        style="@style/NeoSwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+                </LinearLayout>
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="11dp"
-                android:paddingBottom="11dp">
-
-                <TextView
+                <LinearLayout
                     android:layout_width="0dp"
-                    android:layout_height="wrap_content"
+                    android:layout_height="match_parent"
                     android:layout_weight="1"
-                    android:text="震动"
-                    android:textColor="@color/ink"
-                    android:textSize="15sp"/>
+                    android:layout_margin="4dp"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:background="@drawable/bg_pill"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="8dp"
+                    android:paddingTop="10dp"
+                    android:paddingBottom="10dp">
 
-                <Switch
-                    android:id="@+id/sw_vibrate"
-                    style="@style/NeoSwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="语音朗读"
+                        android:textColor="@color/ink"
+                        android:textSize="14sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <Switch
+                        android:id="@+id/sw_tts"
+                        style="@style/NeoSwitch"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"/>
+                </LinearLayout>
             </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginStart="16dp"
-                android:background="@color/divider"/>
 
             <LinearLayout
                 android:id="@+id/ring_row"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_margin="4dp"
                 android:orientation="horizontal"
                 android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="11dp"
-                android:paddingBottom="11dp"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?android:attr/selectableItemBackground">
@@ -325,81 +401,20 @@
                     android:layout_weight="1"
                     android:text="自定义铃声"
                     android:textColor="@color/ink"
-                    android:textSize="15sp"/>
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
 
                 <TextView
                     android:id="@+id/ring_val"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginEnd="10dp"
                     android:text="系统默认"
                     android:textColor="@color/dark"
                     android:textSize="12sp"
                     android:maxLines="1"
                     android:ellipsize="end"
                     android:maxWidth="140dp"/>
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginStart="16dp"
-                android:background="@color/divider"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="11dp"
-                android:paddingBottom="11dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="悬浮窗"
-                    android:textColor="@color/ink"
-                    android:textSize="15sp"/>
-
-                <Switch
-                    android:id="@+id/sw_float_msg"
-                    style="@style/NeoSwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
-            </LinearLayout>
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginStart="16dp"
-                android:background="@color/divider"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:paddingTop="11dp"
-                android:paddingBottom="11dp">
-
-                <TextView
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:text="语音朗读"
-                    android:textColor="@color/ink"
-                    android:textSize="15sp"/>
-
-                <Switch
-                    android:id="@+id/sw_tts"
-                    style="@style/NeoSwitch"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"/>
             </LinearLayout>
         </LinearLayout>
 
@@ -490,10 +505,28 @@
         </LinearLayout>
 
         <TextView
+            android:id="@+id/reset"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_pill"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingTop="9dp"
+            android:paddingBottom="9dp"
+            android:text="重置服务"
+            android:textColor="@color/dark"
+            android:textSize="13sp"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="?android:attr/selectableItemBackground"/>
+
+        <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="18dp"
-            android:text="向 http://手机IP:端口 发送 POST 请求，消息将按上方开关分发到通知栏、声音、悬浮窗、悬浮球与语音朗读。\n\n支持 JSON（自动提取 title / text / message / content 等字段）、表单参数、纯文本。\n\n悬浮窗与悬浮球需在系统设置中授权；部分手机请同时允许「自启动」与「后台运行」。"
+            android:layout_marginTop="14dp"
+            android:text="任意路径、任意方法均可推送，请求体：{&quot;text&quot;:&quot;消息内容&quot;}\n成功返回 {&quot;text&quot;:&quot;success&quot;}，失败返回 {&quot;text&quot;:&quot;原因&quot;}\n让 AI 生成请求时，只需告诉它：向上述地址发送 POST，body 固定为 {&quot;text&quot;:&quot;要通知我的内容&quot;}"
             android:textColor="@color/muted"
             android:textSize="12sp"
             android:lineSpacingExtra="4dp"/>

@@ -35,7 +35,6 @@ import java.util.Locale;
 public class ServerService extends Service {
 
     static final String EXTRA_PORT = "port";
-    private static final String[] TITLE_KEYS = {"title", "subject"};
     private static final String[] MSG_KEYS = {"text", "message", "content", "body", "msg"};
 
     static volatile boolean running = false;
@@ -331,16 +330,15 @@ public class ServerService extends Service {
                 if (n < 0) break;
                 off += n;
             }
-            String text = off > 0 ? new String(body, 0, off, StandardCharsets.UTF_8) : "";
+            String raw = off > 0 ? new String(body, 0, off, StandardCharsets.UTF_8) : "";
 
-            out.write("HTTP/1.1 200 OK\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Length: 2\r\nConnection: close\r\n\r\n"
-                    .getBytes(StandardCharsets.UTF_8));
-            if (!"HEAD".equals(method)) out.write("ok".getBytes(StandardCharsets.UTF_8));
-            out.flush();
-
-            String content = text.length() > 0 ? text : query;
-            if (content.length() > 0 || !("GET".equals(method) || "HEAD".equals(method))) {
-                notifyMessage(content);
+            // 任意路径、任意方法都接受；有 body 用 body，否则用查询参数
+            String msg = extractText(raw.length() > 0 ? raw : query);
+            if (msg == null) {
+                respond(out, 400, "缺少 text 字段，请发送 {\"text\":\"内容\"}", "HEAD".equals(method));
+            } else {
+                notifyMessage(msg);
+                respond(out, 200, "success", "HEAD".equals(method));
             }
         } catch (Exception ignored) {
         } finally {
@@ -348,6 +346,44 @@ public class ServerService extends Service {
                 s.close();
             } catch (Exception ignored) {
             }
+        }
+    }
+
+    /** 统一响应格式：{"text":"..."} */
+    private static void respond(OutputStream out, int code, String text, boolean headOnly) throws Exception {
+        byte[] b = ("{\"text\":" + JSONObject.quote(text) + "}").getBytes(StandardCharsets.UTF_8);
+        String head = "HTTP/1.1 " + code + (code == 200 ? " OK" : " Bad Request")
+                + "\r\nContent-Type: application/json; charset=utf-8"
+                + "\r\nContent-Length: " + (headOnly ? 0 : b.length)
+                + "\r\nConnection: close\r\n\r\n";
+        out.write(head.getBytes(StandardCharsets.UTF_8));
+        if (!headOnly) out.write(b);
+        out.flush();
+    }
+
+    /** 从 JSON / 表单 / 纯文本中取出 text，取不到返回 null */
+    private static String extractText(String content) {
+        String s = content == null ? "" : content.trim();
+        if (s.length() == 0) return null;
+        if (s.startsWith("{")) {
+            try {
+                JSONObject o = new JSONObject(s);
+                for (String k : MSG_KEYS) {
+                    String v = o.optString(k, "");
+                    if (v.length() > 0) return v;
+                }
+            } catch (Exception ignored) {
+            }
+            return null;
+        }
+        if (s.indexOf('=') >= 0) {
+            String v = pickParam(s, MSG_KEYS);
+            return v != null && v.length() > 0 ? v : null;
+        }
+        try {
+            return URLDecoder.decode(s, "UTF-8");
+        } catch (Exception e) {
+            return s;
         }
     }
 
@@ -361,35 +397,9 @@ public class ServerService extends Service {
         return line;
     }
 
-    private synchronized void notifyMessage(String raw) {
+    private synchronized void notifyMessage(String msg) {
         String title = "Webhook";
-        String msg = raw == null ? "" : raw.trim();
-        if (msg.startsWith("{")) {
-            try {
-                JSONObject o = new JSONObject(msg);
-                title = firstOf(o, TITLE_KEYS, title);
-                msg = firstOf(o, MSG_KEYS, msg);
-            } catch (Exception ignored) {
-            }
-        } else if (msg.indexOf('=') >= 0) {
-            String t = pickParam(msg, TITLE_KEYS);
-            String m = pickParam(msg, MSG_KEYS);
-            if (t != null) title = t;
-            if (m != null) {
-                msg = m;
-            } else if (t == null) {
-                try {
-                    msg = URLDecoder.decode(msg, "UTF-8");
-                } catch (Exception ignored) {
-                }
-            }
-        } else if (msg.indexOf('%') >= 0) {
-            try {
-                msg = URLDecoder.decode(msg, "UTF-8");
-            } catch (Exception ignored) {
-            }
-        }
-        if (msg.length() == 0) msg = "(空消息)";
+        if (msg == null || msg.trim().length() == 0) msg = "(空消息)";
 
         String time = new SimpleDateFormat("HH:mm", Locale.CHINA).format(new Date());
         HistoryStore.append(this, title, msg, time);
@@ -418,11 +428,6 @@ public class ServerService extends Service {
             } catch (Exception ignored) {
             }
         }
-    }
-
-    private static String firstOf(JSONObject o, String[] keys, String def) {
-        for (String k : keys) if (o.has(k)) return o.optString(k);
-        return def;
     }
 
     private static String pickParam(String s, String[] keys) {

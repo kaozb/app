@@ -13,7 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 消息历史持久化（JSON 行文件），供剪切板页与悬浮球面板读取。
+ * 消息历史持久化（JSON 行文件），供剪切板页读取。
  * 每条只保留前 2000 字，避免文件过大。
  */
 final class HistoryStore {
@@ -66,6 +66,14 @@ final class HistoryStore {
             if (lines.size() <= limit) return;
             while (lines.size() > limit) lines.remove(0);
             writeLines(c, lines);
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 重置：删除全部历史 */
+    static synchronized void clear(Context c) {
+        try {
+            file(c).delete();
         } catch (Exception ignored) {
         }
     }
