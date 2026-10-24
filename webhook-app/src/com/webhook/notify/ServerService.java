@@ -29,9 +29,7 @@ import java.net.Socket;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
 import java.util.Date;
-import java.util.List;
 import java.util.Locale;
 
 public class ServerService extends Service {
@@ -43,9 +41,6 @@ public class ServerService extends Service {
     static volatile boolean running = false;
     static volatile int listenPort = -1;
     static volatile String lastError = null;
-
-    /** 最近消息，元素为 {title, text, time}，供悬浮球面板展示 */
-    static final List<String[]> history = new ArrayList<String[]>();
 
     private static final String CH_SERVICE = "service";
     private static final int FGS_ID = 1;
@@ -98,6 +93,10 @@ public class ServerService extends Service {
         int port = intent != null ? intent.getIntExtra(EXTRA_PORT, Prefs.getPort(this)) : Prefs.getPort(this);
         ensureMsgChannel();
         startForeground(FGS_ID, buildServiceNotification(port));
+        if (!Prefs.get(this, "fgsNotify", true)) {
+            // 用户关闭「常驻通知」：先满足前台服务要求，再移除通知
+            stopForeground(STOP_FOREGROUND_REMOVE);
+        }
         synchronized (this) {
             if (thread == null) {
                 startServer(port);
@@ -137,6 +136,21 @@ public class ServerService extends Service {
     static void applyBallSetting(Context c) {
         ServerService s = instance;
         if (s != null && s.floating != null) s.floating.setBallEnabled(Prefs.get(c, "floatBall", false));
+    }
+
+    /** 切换「常驻通知」开关时立即生效 */
+    static void applyFgsSetting(Context c) {
+        ServerService s = instance;
+        if (s == null) return;
+        try {
+            if (Prefs.get(c, "fgsNotify", true)) {
+                int port = s.listenPort > 0 ? s.listenPort : Prefs.getPort(c);
+                s.startForeground(FGS_ID, s.buildServiceNotification(port));
+            } else {
+                s.stopForeground(STOP_FOREGROUND_REMOVE);
+            }
+        } catch (Exception ignored) {
+        }
     }
 
     /** 打开语音朗读开关时立即试读一句，便于确认 TTS 可用 */
@@ -385,10 +399,7 @@ public class ServerService extends Service {
         if (msg.length() == 0) msg = "(空消息)";
 
         String time = new SimpleDateFormat("HH:mm", Locale.CHINA).format(new Date());
-        synchronized (history) {
-            history.add(new String[]{title, msg, time});
-            while (history.size() > 20) history.remove(0);
-        }
+        HistoryStore.append(this, title, msg, time);
 
         ensureMsgChannel();
         playAlert();

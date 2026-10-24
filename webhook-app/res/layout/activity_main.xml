@@ -59,27 +59,42 @@
 
                 <TextView
                     android:id="@+id/status"
-                    android:layout_width="wrap_content"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
+                    android:layout_weight="3"
                     android:layout_marginStart="8dp"
                     android:text="已停止"
                     android:textColor="@color/muted"
-                    android:textSize="16sp"/>
-
-                <Space
-                    android:layout_width="0dp"
-                    android:layout_height="1dp"
-                    android:layout_weight="1"/>
+                    android:textSize="16sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
 
                 <TextView
-                    android:id="@+id/badge"
-                    android:layout_width="wrap_content"
+                    android:id="@+id/clip_btn"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:text="—"
-                    android:textColor="@color/dark"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_pill"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp"
+                    android:text="剪切板"
+                    android:gravity="center"
+                    android:textColor="@color/accent_deep"
                     android:textSize="12sp"
-                    android:fontFamily="monospace"/>
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:foreground="?android:attr/selectableItemBackground"/>
             </LinearLayout>
+
+            <TextView
+                android:id="@+id/badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:text="—"
+                android:textColor="@color/dark"
+                android:textSize="12sp"
+                android:fontFamily="monospace"/>
 
             <TextView
                 android:id="@+id/urls"
@@ -176,7 +191,38 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="通知栏"
+                    android:text="常驻通知"
+                    android:textColor="@color/ink"
+                    android:textSize="15sp"/>
+
+                <Switch
+                    android:id="@+id/sw_fgs"
+                    style="@style/NeoSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginStart="16dp"
+                android:background="@color/divider"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="11dp"
+                android:paddingBottom="11dp">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="消息通知"
                     android:textColor="@color/ink"
                     android:textSize="15sp"/>
 

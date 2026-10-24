@@ -28,6 +28,11 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".ClipboardActivity"
+            android:exported="false"
+            android:parentActivityName=".MainActivity"/>
+
         <service
             android:name=".ServerService"
             android:exported="false"

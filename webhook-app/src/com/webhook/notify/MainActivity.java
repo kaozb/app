@@ -92,6 +92,23 @@ public class MainActivity extends Activity {
         bindBool(R.id.sw_vibrate, "vibrate", true);
         bindBool(R.id.sw_boot, "boot", false);
 
+        Switch swFgs = (Switch) findViewById(R.id.sw_fgs);
+        swFgs.setChecked(Prefs.get(this, "fgsNotify", true));
+        swFgs.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                Prefs.set(MainActivity.this, "fgsNotify", on);
+                ServerService.applyFgsSetting(MainActivity.this);
+            }
+        });
+
+        findViewById(R.id.clip_btn).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, ClipboardActivity.class));
+            }
+        });
+
         Switch swTts = (Switch) findViewById(R.id.sw_tts);
         swTts.setChecked(Prefs.get(this, "tts", false));
         swTts.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {

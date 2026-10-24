@@ -207,18 +207,17 @@ final class FloatingManager {
         head.setPadding(0, 0, 0, dp(4));
         panelView.addView(head);
         int count = 0;
-        synchronized (ServerService.history) {
-            for (int i = ServerService.history.size() - 1; i >= 0 && count < 5; i--, count++) {
-                String[] m = ServerService.history.get(i);
-                TextView row = new TextView(svc);
-                row.setText("· " + m[2] + "  " + m[1]);
-                row.setTextColor(0xFF3E3930);
-                row.setTextSize(13);
-                row.setMaxLines(2);
-                row.setEllipsize(TextUtils.TruncateAt.END);
-                row.setPadding(0, dp(3), 0, dp(3));
-                panelView.addView(row);
-            }
+        java.util.List<String[]> recent = HistoryStore.load(svc, 5);
+        for (String[] m : recent) {
+            TextView row = new TextView(svc);
+            row.setText("· " + m[2] + "  " + m[1]);
+            row.setTextColor(0xFF3E3930);
+            row.setTextSize(13);
+            row.setMaxLines(2);
+            row.setEllipsize(TextUtils.TruncateAt.END);
+            row.setPadding(0, dp(3), 0, dp(3));
+            panelView.addView(row);
+            count++;
         }
         if (count == 0) {
             TextView empty = new TextView(svc);
