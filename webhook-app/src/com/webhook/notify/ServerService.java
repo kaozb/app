@@ -5,8 +5,10 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
 import android.media.MediaPlayer;
@@ -16,7 +18,6 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
-import android.os.PowerManager;
 import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -70,13 +71,20 @@ public class ServerService extends Service {
     private final Object ringLock = new Object();
     private MediaPlayer ringPlayer;
     private Vibrator ringVib;
-    private PowerManager.WakeLock ringWake;
     private volatile boolean ringing = false;
+    private long ringStartAt = 0;
     private long lastRingEndAt = 0;
     private final Runnable ringTimeout = new Runnable() {
         @Override
         public void run() {
             stopRingContinuous();
+        }
+    };
+    /** 亮屏/解锁时校准响铃时长：锁屏期间已超过 60 秒的，直接停掉不再响 */
+    private final BroadcastReceiver screenOn = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            syncRingClock();
         }
     };
 
@@ -103,6 +111,10 @@ public class ServerService extends Service {
         nm.createNotificationChannel(new NotificationChannel(CH_SERVICE, "服务状态", NotificationManager.IMPORTANCE_MIN));
         ensureMsgChannel();
         floating = new FloatingManager(this);
+        IntentFilter f = new IntentFilter();
+        f.addAction(Intent.ACTION_SCREEN_ON);
+        f.addAction(Intent.ACTION_USER_PRESENT);
+        registerReceiver(screenOn, f);
     }
 
     @Override
@@ -148,6 +160,10 @@ public class ServerService extends Service {
         if (floating != null) floating.shutdown();
         stopRing();
         stopRingContinuous();
+        try {
+            unregisterReceiver(screenOn);
+        } catch (Exception ignored) {
+        }
         ui.removeCallbacks(flushBatch);
         instance = null;
         // 不在这里清 running 标记：被系统回收时保留，看门狗才能自动拉起
@@ -221,7 +237,11 @@ public class ServerService extends Service {
         long now = SystemClock.elapsedRealtime();
         synchronized (ringLock) {
             // 响铃期间收到的多条消息不叠加、不延长
-            if (ringing) return;
+            if (ringing) {
+                // 锁屏休眠会让计时晚触发，这里按真实时长先收尾
+                if (now - ringStartAt >= RING_DURATION_MS) stopRingContinuous();
+                else return;
+            }
             if (lastRingEndAt > 0 && now - lastRingEndAt < RING_COOLDOWN_MS) return;
             startRingContinuous();
         }
@@ -229,10 +249,9 @@ public class ServerService extends Service {
 
     private void startRingContinuous() {
         ringing = true;
+        ringStartAt = SystemClock.elapsedRealtime();
         boolean sound = Prefs.get(this, "sound", true);
         boolean vib = Prefs.get(this, "vibrate", true);
-        // 锁屏后 CPU 会休眠，不持锁时音频缓冲播完就停（表现为只响几秒）
-        acquireRingWakeLock();
         if (sound) {
             MediaPlayer mp = null;
             try {
@@ -244,7 +263,6 @@ public class ServerService extends Service {
                         .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build());
-                mp.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
                 mp.setDataSource(getApplicationContext(), uri);
                 mp.setLooping(true);
                 mp.prepare();
@@ -300,33 +318,28 @@ public class ServerService extends Service {
                 }
                 ringVib = null;
             }
-            releaseRingWakeLock();
-            if (was) lastRingEndAt = SystemClock.elapsedRealtime();
+            if (was) {
+                // 提前确认按当前时间；超时/休眠后补停则按原本应结束的时间，冷却不重复延长
+                long now = SystemClock.elapsedRealtime();
+                lastRingEndAt = Math.min(now, ringStartAt + RING_DURATION_MS);
+            }
         }
         getSystemService(NotificationManager.class).cancel(RING_NOTIFY_ID);
     }
 
-    /** 响铃期间持有 PARTIAL_WAKE_LOCK：锁屏/休眠时保证音频与 60 秒计时都能走完 */
-    private void acquireRingWakeLock() {
-        if (ringWake != null && ringWake.isHeld()) return;
-        try {
-            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
-            if (pm == null) return;
-            PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "webhook:ring");
-            wl.setReferenceCounted(false);
-            wl.acquire(RING_DURATION_MS + 5000L);
-            ringWake = wl;
-        } catch (Exception ignored) {
+    /** 亮屏/解锁时按真实时间校准：锁屏期间已超过 60 秒则立即停响，不再继续 */
+    private void syncRingClock() {
+        synchronized (ringLock) {
+            if (!ringing) return;
+            long elapsed = SystemClock.elapsedRealtime() - ringStartAt;
+            if (elapsed >= RING_DURATION_MS) {
+                stopRingContinuous();
+                return;
+            }
+            // 休眠会让原定时器偏晚，重新按剩余时间计时
+            ui.removeCallbacks(ringTimeout);
+            ui.postDelayed(ringTimeout, RING_DURATION_MS - elapsed);
         }
-    }
-
-    private void releaseRingWakeLock() {
-        if (ringWake == null) return;
-        try {
-            if (ringWake.isHeld()) ringWake.release();
-        } catch (Exception ignored) {
-        }
-        ringWake = null;
     }
 
     /** 手动确认：立即停响，并收起悬浮条 */
