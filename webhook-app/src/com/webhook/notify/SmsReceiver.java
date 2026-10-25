@@ -31,13 +31,16 @@ public class SmsReceiver extends BroadcastReceiver {
         final String json = SmsForward.buildJson(Prefs.smsJson(context), body, sender, time);
         final String target = url.trim();
 
-        // 广播里不能长时间阻塞，交给后台线程发送
+        // 息屏时系统可能限制后台网络（Doze）或延迟派发广播，一次性发送很容易失败：
+        // 先同步落盘，再尝试发送；失败的消息留在发件箱，等亮屏/解锁/退避闹钟补发
+        SmsOutbox.enqueue(context.getApplicationContext(), target, json);
         final PendingResult pending = goAsync();
+        final Context app = context.getApplicationContext();
         new Thread(new Runnable() {
             @Override
             public void run() {
                 try {
-                    SmsForward.post(target, json);
+                    SmsOutbox.flush(app);
                 } finally {
                     pending.finish();
                 }

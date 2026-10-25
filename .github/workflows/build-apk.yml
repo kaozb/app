@@ -73,7 +73,7 @@ jobs:
           body: |
             自动构建产物，提交 `${{ github.sha }}`。
 
-            下载 `Webhook.apk` 覆盖安装即可（与历史版本使用同一签名，可直接升级）。
+            下载 `Webhook.apk` 安装即可（统一使用 mibo 正式签名；若之前装过旧 debug 签名版本，需先卸载再安装）。
           prerelease: false
 
       # 推送 main：维护滚动预发布 latest-build，同名资产自动覆盖
@@ -88,5 +88,5 @@ jobs:
           body: |
             `main` 分支最新自动构建，提交 `${{ github.sha }}`。
 
-            下载 `Webhook.apk` 覆盖安装即可（与历史版本使用同一签名，可直接升级）。
+            下载 `Webhook.apk` 安装即可（统一使用 mibo 正式签名；若之前装过旧 debug 签名版本，需先卸载再安装）。
           prerelease: true
