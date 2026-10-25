@@ -50,4 +50,21 @@
             android:textColor="@color/muted"
             android:textSize="11sp"/>
     </LinearLayout>
+
+    <TextView
+        android:id="@+id/f_ack"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:background="@drawable/bg_pill"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:paddingTop="7dp"
+        android:paddingBottom="7dp"
+        android:text="已确认"
+        android:textColor="@color/accent_deep"
+        android:textSize="12sp"
+        android:clickable="true"
+        android:focusable="true"
+        android:foreground="?android:attr/selectableItemBackground"/>
 </LinearLayout>

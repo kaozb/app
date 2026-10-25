@@ -40,7 +40,7 @@ final class FloatingManager {
         return (int) (v * density + 0.5f);
     }
 
-    void showMessage(final String title, final String text) {
+    void showMessage(final String title, final String text, final long hideAfterMs) {
         if (!Prefs.get(svc, "floatMsg", false) || !Settings.canDrawOverlays(svc)) return;
         main.post(new Runnable() {
             @Override
@@ -52,6 +52,12 @@ final class FloatingManager {
                             @Override
                             public void onClick(View v) {
                                 hideMsgNow();
+                            }
+                        });
+                        msgView.findViewById(R.id.f_ack).setOnClickListener(new View.OnClickListener() {
+                            @Override
+                            public void onClick(View v) {
+                                svc.acknowledgeRing();
                             }
                         });
                         int w = Resources.getSystem().getDisplayMetrics().widthPixels - dp(32);
@@ -70,9 +76,19 @@ final class FloatingManager {
                     ((TextView) msgView.findViewById(R.id.f_text)).setText(text);
                     ((TextView) msgView.findViewById(R.id.f_time)).setText("刚刚 · Webhook");
                     main.removeCallbacks(hideMsg);
-                    main.postDelayed(hideMsg, 4000);
+                    main.postDelayed(hideMsg, hideAfterMs);
                 } catch (Exception ignored) {
                 }
+            }
+        });
+    }
+
+    /** 手动确认后立即收起悬浮条 */
+    void dismiss() {
+        main.post(new Runnable() {
+            @Override
+            public void run() {
+                hideMsgNow();
             }
         });
     }

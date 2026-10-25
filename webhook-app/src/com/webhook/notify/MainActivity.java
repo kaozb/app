@@ -106,6 +106,17 @@ public class MainActivity extends Activity {
         bindBool(R.id.sw_vibrate, "vibrate", true);
         bindBool(R.id.sw_boot, "boot", false);
 
+        Switch swRingLoop = (Switch) findViewById(R.id.sw_ring_loop);
+        swRingLoop.setChecked(Prefs.get(this, "ringLoop", false));
+        swRingLoop.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                Prefs.set(MainActivity.this, "ringLoop", on);
+                // 关闭时如果正在响铃，立即停响
+                if (!on) ServerService.stopRingNow();
+            }
+        });
+
         Switch swKeep = (Switch) findViewById(R.id.sw_keep);
         swKeep.setChecked(Prefs.get(this, "keepAlive", true));
         swKeep.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
