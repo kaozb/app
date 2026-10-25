@@ -16,6 +16,7 @@ import android.net.Uri;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -69,6 +70,7 @@ public class ServerService extends Service {
     private final Object ringLock = new Object();
     private MediaPlayer ringPlayer;
     private Vibrator ringVib;
+    private PowerManager.WakeLock ringWake;
     private volatile boolean ringing = false;
     private long lastRingEndAt = 0;
     private final Runnable ringTimeout = new Runnable() {
@@ -229,6 +231,8 @@ public class ServerService extends Service {
         ringing = true;
         boolean sound = Prefs.get(this, "sound", true);
         boolean vib = Prefs.get(this, "vibrate", true);
+        // 锁屏后 CPU 会休眠，不持锁时音频缓冲播完就停（表现为只响几秒）
+        acquireRingWakeLock();
         if (sound) {
             MediaPlayer mp = null;
             try {
@@ -240,6 +244,7 @@ public class ServerService extends Service {
                         .setUsage(AudioAttributes.USAGE_NOTIFICATION)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                         .build());
+                mp.setWakeMode(getApplicationContext(), PowerManager.PARTIAL_WAKE_LOCK);
                 mp.setDataSource(getApplicationContext(), uri);
                 mp.setLooping(true);
                 mp.prepare();
@@ -295,9 +300,33 @@ public class ServerService extends Service {
                 }
                 ringVib = null;
             }
+            releaseRingWakeLock();
             if (was) lastRingEndAt = SystemClock.elapsedRealtime();
         }
         getSystemService(NotificationManager.class).cancel(RING_NOTIFY_ID);
+    }
+
+    /** 响铃期间持有 PARTIAL_WAKE_LOCK：锁屏/休眠时保证音频与 60 秒计时都能走完 */
+    private void acquireRingWakeLock() {
+        if (ringWake != null && ringWake.isHeld()) return;
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm == null) return;
+            PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "webhook:ring");
+            wl.setReferenceCounted(false);
+            wl.acquire(RING_DURATION_MS + 5000L);
+            ringWake = wl;
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void releaseRingWakeLock() {
+        if (ringWake == null) return;
+        try {
+            if (ringWake.isHeld()) ringWake.release();
+        } catch (Exception ignored) {
+        }
+        ringWake = null;
     }
 
     /** 手动确认：立即停响，并收起悬浮条 */
