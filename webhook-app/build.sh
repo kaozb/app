@@ -26,11 +26,13 @@ javac -source 1.8 -target 1.8 -bootclasspath "$PLATFORM" -encoding UTF-8 -Xlint:
 (cd "$OUT/dex" && zip -q "../base.apk" classes.dex)
 # 6. 对齐
 "$BT/zipalign" -f 4 "$OUT/base.apk" "$OUT/aligned.apk"
-# 7. 签名（首次自动生成 debug.keystore，保持签名一致可覆盖安装）
-[ -f debug.keystore ] || keytool -genkeypair -keyalg RSA -keysize 2048 -validity 10000 \
-    -keystore debug.keystore -storepass android -keypass android \
-    -alias androiddebugkey -dname "CN=Android Debug,O=Android,C=US" >/dev/null 2>&1
-"$BT/apksigner" sign --ks debug.keystore --ks-pass pass:android --key-pass pass:android \
+# 7. 签名（统一使用仓库内正式 keystore，保证所有版本同一签名可直接覆盖安装；
+#    可用环境变量 KEYSTORE / KEYSTORE_PASS / KEYSTORE_ALIAS 覆盖默认值）
+KS="${KEYSTORE:-$(pwd)/mibo.jks}"
+KS_PASS="${KEYSTORE_PASS:-mibo}"
+KS_ALIAS="${KEYSTORE_ALIAS:-mibo}"
+"$BT/apksigner" sign --ks "$KS" --ks-key-alias "$KS_ALIAS" \
+    --ks-pass "pass:$KS_PASS" --key-pass "pass:$KS_PASS" \
     --v4-signing-enabled false --out Webhook.apk "$OUT/aligned.apk"
 
 echo "OK -> $(pwd)/Webhook.apk"

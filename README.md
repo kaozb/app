@@ -21,7 +21,7 @@
 | Build-Tools | **35.0.0**（必须，见下方踩坑记录） |
 | Platform | `platforms;android-34/android.jar` |
 | 打包方式 | `aapt2` → `javac` → `d8` → `zip` → `zipalign` → `apksigner` |
-| 签名 | 首次构建自动生成 `debug.keystore`（storepass/keypass 均为 `android`，alias `androiddebugkey`），保持签名一致以便覆盖安装 |
+| 签名 | 仓库内正式 keystore `mibo.jks`（storepass/keypass/alias 均为 `mibo`，可用 `KEYSTORE`/`KEYSTORE_PASS`/`KEYSTORE_ALIAS` 环境变量覆盖），保证签名一致以便覆盖安装 |
 | 语言 | Java 8 语法，**禁止使用 lambda**（d8 在 android.jar 存根下无法 desugar `metafactory`），统一写匿名内部类 |
 
 ### 构建
@@ -40,7 +40,7 @@ ANDROID_SDK=/path/to/sdk bash build.sh
 
 - **触发**：push 到 `main`、推送 `v*` 标签、手动 `workflow_dispatch`
 - **环境**：Ubuntu runner 预装的 Android SDK（**不使用** `android-actions/setup-android`：它会安装已下架的 `tools` 包，在 cmdline-tools 16 上必然失败），组件缺失时才用 `sdkmanager` 补装 `platforms;android-34`、`build-tools;35.0.0`；JDK 17
-- **构建**：工作流把 SDK 路径写入 `ANDROID_SDK` 环境变量后直接执行 `./build.sh`，复用仓库内的 `debug.keystore`，保证各次构建签名一致、可直接覆盖安装
+- **构建**：工作流把 SDK 路径写入 `ANDROID_SDK` 环境变量后直接执行 `./build.sh`，复用仓库内的 `mibo.jks` 正式签名，保证各次构建签名一致、可直接覆盖安装
 - **产物**：上传 `Webhook-apk` artifact，同时发布到 Release
 - **发布策略**：`main` 推送维护滚动预发布 `latest-build`（同名 APK 自动覆盖）；`v*` 标签生成同名正式 Release
 
