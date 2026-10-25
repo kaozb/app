@@ -5,9 +5,13 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.graphics.drawable.Icon;
 import android.media.AudioAttributes;
+import android.media.MediaPlayer;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
@@ -39,7 +43,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class ServerService extends Service {
 
     static final String EXTRA_PORT = "port";
+    static final String ACTION_ACK = "com.webhook.notify.action.ACK";
     private static final String[] MSG_KEYS = {"text", "message", "content", "body", "msg"};
+
+    /** 持续响铃：单次最长 60 秒，结束后 10 秒冷却 */
+    private static final long RING_DURATION_MS = 60000L;
+    private static final long RING_COOLDOWN_MS = 10000L;
+    private static final int RING_NOTIFY_ID = 100;
 
     static volatile boolean running = false;
     static volatile int listenPort = -1;
@@ -56,6 +66,27 @@ public class ServerService extends Service {
     private final Handler ui = new Handler(Looper.getMainLooper());
     private Ringtone lastRing;
     private String curMsgChannel;
+
+    /** 持续响铃状态 */
+    private final Object ringLock = new Object();
+    private MediaPlayer ringPlayer;
+    private Vibrator ringVib;
+    private volatile boolean ringing = false;
+    private long ringStartAt = 0;
+    private long lastRingEndAt = 0;
+    private final Runnable ringTimeout = new Runnable() {
+        @Override
+        public void run() {
+            stopRingContinuous();
+        }
+    };
+    /** 亮屏/解锁时校准响铃时长：锁屏期间已超过 60 秒的，直接停掉不再响 */
+    private final BroadcastReceiver screenOn = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            syncRingClock();
+        }
+    };
 
     /** 2 秒内的消息合并成一次提醒，避免高频推送反复响铃 / 刷通知 */
     private final List<String> batch = new ArrayList<String>();
@@ -80,10 +111,19 @@ public class ServerService extends Service {
         nm.createNotificationChannel(new NotificationChannel(CH_SERVICE, "服务状态", NotificationManager.IMPORTANCE_MIN));
         ensureMsgChannel();
         floating = new FloatingManager(this);
+        IntentFilter f = new IntentFilter();
+        f.addAction(Intent.ACTION_SCREEN_ON);
+        f.addAction(Intent.ACTION_USER_PRESENT);
+        registerReceiver(screenOn, f);
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 通知栏「已确认」：停止持续响铃（服务此时仍在运行）
+        if (intent != null && ACTION_ACK.equals(intent.getAction())) {
+            acknowledgeRing();
+            return START_STICKY;
+        }
         int port = intent != null ? intent.getIntExtra(EXTRA_PORT, Prefs.getPort(this)) : Prefs.getPort(this);
         ensureMsgChannel();
         startForeground(FGS_ID, buildServiceNotification(port));
@@ -119,6 +159,11 @@ public class ServerService extends Service {
         listenPort = -1;
         if (floating != null) floating.shutdown();
         stopRing();
+        stopRingContinuous();
+        try {
+            unregisterReceiver(screenOn);
+        } catch (Exception ignored) {
+        }
         ui.removeCallbacks(flushBatch);
         instance = null;
         // 不在这里清 running 标记：被系统回收时保留，看门狗才能自动拉起
@@ -181,6 +226,151 @@ public class ServerService extends Service {
             }
             lastRing = null;
         }
+    }
+
+    /** 「持续响铃」开启时的提醒入口：响铃中或冷却期内的消息只出通知，不重新响铃 */
+    private void alertForNewMessage() {
+        if (!Prefs.get(this, "ringLoop", false)) {
+            playAlert();
+            return;
+        }
+        long now = SystemClock.elapsedRealtime();
+        synchronized (ringLock) {
+            // 响铃期间收到的多条消息不叠加、不延长
+            if (ringing) {
+                // 锁屏休眠会让计时晚触发，这里按真实时长先收尾
+                if (now - ringStartAt >= RING_DURATION_MS) stopRingContinuous();
+                else return;
+            }
+            if (lastRingEndAt > 0 && now - lastRingEndAt < RING_COOLDOWN_MS) return;
+            startRingContinuous();
+        }
+    }
+
+    private void startRingContinuous() {
+        ringing = true;
+        ringStartAt = SystemClock.elapsedRealtime();
+        boolean sound = Prefs.get(this, "sound", true);
+        boolean vib = Prefs.get(this, "vibrate", true);
+        if (sound) {
+            MediaPlayer mp = null;
+            try {
+                String custom = Prefs.ringtone(this);
+                Uri uri = custom != null ? Uri.parse(custom)
+                        : RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
+                mp = new MediaPlayer();
+                mp.setAudioAttributes(new AudioAttributes.Builder()
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .build());
+                mp.setDataSource(getApplicationContext(), uri);
+                mp.setLooping(true);
+                mp.prepare();
+                mp.start();
+                ringPlayer = mp;
+            } catch (Exception e) {
+                if (mp != null) {
+                    try {
+                        mp.release();
+                    } catch (Exception ignored) {
+                    }
+                }
+                ringPlayer = null;
+            }
+        }
+        if (vib) {
+            try {
+                Vibrator v = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+                if (v != null && v.hasVibrator()) {
+                    // 长震动节奏，循环到停止
+                    v.vibrate(VibrationEffect.createWaveform(new long[]{0, 240, 900}, 0));
+                    ringVib = v;
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        ui.removeCallbacks(ringTimeout);
+        ui.postDelayed(ringTimeout, RING_DURATION_MS);
+        showRingNotification();
+    }
+
+    /** 停止持续响铃并进入 10 秒冷却（自动超时、手动确认、关闭开关都会走到这里） */
+    private void stopRingContinuous() {
+        synchronized (ringLock) {
+            boolean was = ringing;
+            ringing = false;
+            ui.removeCallbacks(ringTimeout);
+            if (ringPlayer != null) {
+                try {
+                    if (ringPlayer.isPlaying()) ringPlayer.stop();
+                } catch (Exception ignored) {
+                }
+                try {
+                    ringPlayer.release();
+                } catch (Exception ignored) {
+                }
+                ringPlayer = null;
+            }
+            if (ringVib != null) {
+                try {
+                    ringVib.cancel();
+                } catch (Exception ignored) {
+                }
+                ringVib = null;
+            }
+            if (was) {
+                // 提前确认按当前时间；超时/休眠后补停则按原本应结束的时间，冷却不重复延长
+                long now = SystemClock.elapsedRealtime();
+                lastRingEndAt = Math.min(now, ringStartAt + RING_DURATION_MS);
+            }
+        }
+        getSystemService(NotificationManager.class).cancel(RING_NOTIFY_ID);
+    }
+
+    /** 亮屏/解锁时按真实时间校准：锁屏期间已超过 60 秒则立即停响，不再继续 */
+    private void syncRingClock() {
+        synchronized (ringLock) {
+            if (!ringing) return;
+            long elapsed = SystemClock.elapsedRealtime() - ringStartAt;
+            if (elapsed >= RING_DURATION_MS) {
+                stopRingContinuous();
+                return;
+            }
+            // 休眠会让原定时器偏晚，重新按剩余时间计时
+            ui.removeCallbacks(ringTimeout);
+            ui.postDelayed(ringTimeout, RING_DURATION_MS - elapsed);
+        }
+    }
+
+    /** 手动确认：立即停响，并收起悬浮条 */
+    void acknowledgeRing() {
+        stopRingContinuous();
+        stopRing();
+        if (floating != null) floating.dismiss();
+    }
+
+    /** 供界面关闭「持续响铃」开关时立即生效 */
+    static void stopRingNow() {
+        ServerService s = instance;
+        if (s != null) s.acknowledgeRing();
+    }
+
+    /** 响铃期间提供「已确认」入口，避免用户只能干等 60 秒 */
+    private void showRingNotification() {
+        Intent ack = new Intent(this, ServerService.class).setAction(ACTION_ACK);
+        PendingIntent pi = PendingIntent.getService(this, 1, ack,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        Notification n = new Notification.Builder(this, curMsgChannel)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle("Webhook · 持续响铃")
+                .setContentText("点击「已确认」停止响铃（最长 60 秒）")
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setContentIntent(pi)
+                .addAction(new Notification.Action.Builder(
+                        Icon.createWithResource(this, R.drawable.ic_notification), "已确认", pi).build())
+                .build();
+        getSystemService(NotificationManager.class).notify(RING_NOTIFY_ID, n);
     }
 
     private void startServer(int port) {
@@ -457,7 +647,7 @@ public class ServerService extends Service {
 
     private void deliver(String title, String body, String big) {
         ensureMsgChannel();
-        playAlert();
+        alertForNewMessage();
         if (Prefs.get(this, "notify", true)) {
             Notification n = new Notification.Builder(this, curMsgChannel)
                     .setSmallIcon(R.drawable.ic_notification)
@@ -473,7 +663,8 @@ public class ServerService extends Service {
 
         if (floating != null) {
             String f = big.length() > 160 ? big.substring(0, 160) + "…" : big;
-            floating.showMessage(title, f);
+            // 响铃期间悬浮条保留到响铃结束，方便点「已确认」
+            floating.showMessage(title, f, ringing ? RING_DURATION_MS : 4000);
         }
     }
 
