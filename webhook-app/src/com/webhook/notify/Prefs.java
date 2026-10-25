@@ -39,6 +39,24 @@ final class Prefs {
         p(c).edit().putString("ringtone", v).apply();
     }
 
+    /** 短信转发目标地址 */
+    static String smsUrl(Context c) {
+        return p(c).getString("smsUrl", "");
+    }
+
+    static void smsUrl(Context c, String v) {
+        p(c).edit().putString("smsUrl", v).apply();
+    }
+
+    /** 短信转发 JSON 模板 */
+    static String smsJson(Context c) {
+        return p(c).getString("smsJson", "");
+    }
+
+    static void smsJson(Context c, String v) {
+        p(c).edit().putString("smsJson", v).apply();
+    }
+
     /** 保留消息条数，默认 50 */
     static int keep(Context c) {
         return p(c).getInt("keep", 50);

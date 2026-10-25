@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true"
+    android:scrollbars="none">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="20dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="短信转发"
+                android:textColor="@color/ink"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.05"/>
+
+            <TextView
+                android:id="@+id/sms_test"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="8dp"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:text="测试"
+                android:textColor="@color/dark"
+                android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackground"/>
+
+            <TextView
+                android:id="@+id/sms_save"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp"
+                android:text="保存"
+                android:textColor="@color/accent_deep"
+                android:textSize="12sp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackground"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="收到短信后，把短信内容填入下面的 JSON 模板，POST 到你填写的接口地址。"
+            android:textColor="@color/muted"
+            android:textSize="12sp"
+            android:lineSpacingExtra="3dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginStart="4dp"
+            android:text="接口地址（POST）"
+            android:textColor="@color/dark"
+            android:textSize="12sp"/>
+
+        <EditText
+            android:id="@+id/sms_url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_inset"
+            android:paddingStart="12dp"
+            android:paddingEnd="12dp"
+            android:paddingTop="11dp"
+            android:paddingBottom="11dp"
+            android:inputType="textUri"
+            android:singleLine="true"
+            android:hint="https://example.com/sms"
+            android:textColorHint="@color/muted"
+            android:textSize="14sp"
+            android:textColor="@color/ink"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:layout_marginStart="4dp"
+            android:text="JSON 模板"
+            android:textColor="@color/dark"
+            android:textSize="12sp"/>
+
+        <EditText
+            android:id="@+id/sms_json"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:background="@drawable/bg_inset"
+            android:padding="12dp"
+            android:gravity="top|start"
+            android:inputType="textMultiLine"
+            android:minLines="7"
+            android:fontFamily="monospace"
+            android:textColor="@color/ink"
+            android:textSize="13sp"
+            android:lineSpacingExtra="3dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:layout_marginStart="4dp"
+            android:text="可用变量（值会自动做 JSON 转义，请写在引号内）：&quot;{{内容}}&quot; 或 &quot;{{text}}&quot; 是短信正文，&quot;{{发送者}}&quot; 或 &quot;{{from}}&quot; 是发信号码，&quot;{{时间}}&quot; 或 &quot;{{time}}&quot; 是收到时间。\n示例：{&quot;text&quot;:&quot;来自 {{发送者}}：{{内容}}&quot;}"
+            android:textColor="@color/muted"
+            android:textSize="12sp"
+            android:lineSpacingExtra="4dp"/>
+    </LinearLayout>
+</ScrollView>
