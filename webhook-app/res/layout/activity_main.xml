@@ -474,6 +474,108 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="18dp"
             android:layout_marginStart="4dp"
+            android:text="短 信"
+            android:textColor="@color/muted"
+            android:textSize="12sp"
+            android:letterSpacing="0.15"/>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_card"
+            android:padding="12dp"
+            android:layout_marginTop="8dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="短信转发"
+                        android:textColor="@color/ink"
+                        android:textSize="14sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="收到短信后转发到自定义接口"
+                        android:textColor="@color/muted"
+                        android:textSize="11sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/sw_sms_forward"
+                    style="@style/NeoSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/sms_cfg"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?android:attr/selectableItemBackground">
+
+                <TextView
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:text="接口地址与 JSON"
+                    android:textColor="@color/ink"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"/>
+
+                <TextView
+                    android:id="@+id/sms_cfg_val"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="去配置"
+                    android:textColor="@color/dark"
+                    android:textSize="12sp"
+                    android:maxLines="1"
+                    android:ellipsize="end"
+                    android:maxWidth="140dp"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="18dp"
+            android:layout_marginStart="4dp"
             android:text="保 活"
             android:textColor="@color/muted"
             android:textSize="12sp"

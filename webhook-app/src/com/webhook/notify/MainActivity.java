@@ -32,11 +32,12 @@ public class MainActivity extends Activity {
 
     private static final int REQ_NOTIF = 1;
     private static final int REQ_RING = 2;
+    private static final int REQ_SMS = 3;
 
     private EditText portEdit;
     private Switch toggle;
     private TextView status, urls, ringVal, battery, svcLabel, hint;
-    private TextView chkNotifVal, chkOverlayVal;
+    private TextView chkNotifVal, chkOverlayVal, smsVal;
     private View led;
     private final Handler handler = new Handler();
 
@@ -65,6 +66,7 @@ public class MainActivity extends Activity {
         svcLabel = findViewById(R.id.svc_label);
         chkNotifVal = findViewById(R.id.chk_notif_val);
         chkOverlayVal = findViewById(R.id.chk_overlay_val);
+        smsVal = findViewById(R.id.sms_cfg_val);
         hint = findViewById(R.id.hint);
 
         portEdit.setText(String.valueOf(Prefs.getPort(this)));
@@ -200,6 +202,32 @@ public class MainActivity extends Activity {
 
         bindFloat(R.id.sw_float_msg, "floatMsg");
 
+        Switch swSms = (Switch) findViewById(R.id.sw_sms_forward);
+        swSms.setChecked(Prefs.get(this, "smsForward", false));
+        swSms.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                if (on && !smsGranted()) {
+                    b.setChecked(false);
+                    requestPermissions(new String[]{Manifest.permission.RECEIVE_SMS}, REQ_SMS);
+                    return;
+                }
+                Prefs.set(MainActivity.this, "smsForward", on);
+                if (on && Prefs.smsUrl(MainActivity.this).trim().isEmpty()) {
+                    Toast.makeText(MainActivity.this,
+                            "请先填写接口地址与 JSON 模板", Toast.LENGTH_LONG).show();
+                    startActivity(new Intent(MainActivity.this, SmsForwardActivity.class));
+                }
+                syncUi();
+            }
+        });
+        findViewById(R.id.sms_cfg).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, SmsForwardActivity.class));
+            }
+        });
+
         findViewById(R.id.ring_row).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -274,6 +302,24 @@ public class MainActivity extends Activity {
     private boolean notifGranted() {
         NotificationManager nm = getSystemService(NotificationManager.class);
         return nm != null && nm.areNotificationsEnabled();
+    }
+
+    private boolean smsGranted() {
+        return checkSelfPermission(Manifest.permission.RECEIVE_SMS) == PackageManager.PERMISSION_GRANTED;
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode != REQ_SMS) return;
+        boolean ok = grantResults.length > 0
+                && grantResults[0] == PackageManager.PERMISSION_GRANTED;
+        Prefs.set(this, "smsForward", ok);
+        // 权限结果需要反映到开关上；setChecked 会触发监听器完成后续引导
+        ((Switch) findViewById(R.id.sw_sms_forward)).setChecked(ok);
+        if (!ok) {
+            Toast.makeText(this, "未授予短信权限，无法转发短信", Toast.LENGTH_LONG).show();
+        }
     }
 
     private void openNotificationSettings() {
@@ -460,6 +506,7 @@ public class MainActivity extends Activity {
 
         chkNotifVal.setText(notifGranted() ? "已开启" : "去授权");
         chkOverlayVal.setText(Settings.canDrawOverlays(this) ? "已授权" : "去授权");
+        smsVal.setText(Prefs.smsUrl(this).trim().isEmpty() ? "去配置" : "已配置");
     }
 
     static String localUrls(int port) {
