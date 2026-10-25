@@ -80,11 +80,13 @@ public class ServerService extends Service {
             stopRingContinuous();
         }
     };
-    /** 亮屏/解锁时校准响铃时长：锁屏期间已超过 60 秒的，直接停掉不再响 */
+    /** 亮屏/解锁时校准响铃时长：锁屏期间已超过 60 秒的，直接停掉不再响；顺带补发没发出去的短信 */
     private final BroadcastReceiver screenOn = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             syncRingClock();
+            // 亮屏/解锁后网络恢复，补发息屏期间 Doze 下没发出去的短信
+            SmsOutbox.flushAsync(context);
         }
     };
 

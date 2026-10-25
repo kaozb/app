@@ -441,6 +441,8 @@ public class MainActivity extends Activity {
         syncUi();
         applyHideRecents();
         handler.post(poll);
+        // 打开应用时补发息屏期间没发出去的短信
+        if (Prefs.get(this, "smsForward", false)) SmsOutbox.flushAsync(this);
     }
 
     /** 按开关设置当前任务是否出现在最近任务列表，失败返回 false */

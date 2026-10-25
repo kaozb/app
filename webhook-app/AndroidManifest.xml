@@ -7,6 +7,7 @@
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34"/>
 
     <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
@@ -64,5 +65,8 @@
                 <action android:name="android.provider.Telephony.SMS_RECEIVED"/>
             </intent-filter>
         </receiver>
+
+        <!-- 发件箱重试闹钟的接收器：仅由应用自身的 PendingIntent 触发 -->
+        <receiver android:name=".SmsOutboxReceiver" android:exported="false"/>
     </application>
 </manifest>
