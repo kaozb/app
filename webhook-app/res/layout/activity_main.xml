@@ -30,7 +30,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginStart="10dp"
-                android:text="Webhook"
+                android:text="音乐"
                 android:textColor="@color/ink"
                 android:textSize="20sp"
                 android:textStyle="bold"
@@ -796,6 +796,51 @@
                         android:focusable="true"
                         android:foreground="?android:attr/selectableItemBackground"/>
                 </LinearLayout>
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_margin="4dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:background="@drawable/bg_pill"
+                android:paddingStart="12dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="10dp"
+                android:paddingBottom="10dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="强力保活"
+                        android:textColor="@color/ink"
+                        android:textSize="14sp"
+                        android:maxLines="1"
+                        android:ellipsize="end"/>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="静音播放音乐，避免锁屏后被系统冻结（略增耗电）"
+                        android:textColor="@color/muted"
+                        android:textSize="11sp"
+                        android:maxLines="2"
+                        android:ellipsize="end"/>
+                </LinearLayout>
+
+                <Switch
+                    android:id="@+id/sw_strong"
+                    style="@style/NeoSwitch"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"/>
             </LinearLayout>
         </LinearLayout>
 

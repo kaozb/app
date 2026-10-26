@@ -53,8 +53,8 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        // 服务未运行（用户已停止或上次未启动）时不保留任何看门狗遗留定时器
-        if (!Prefs.get(this, "running", false)) BootReceiver.cancelWatchdog(this);
+        // 统一门控：短信转发或启动服务都没开时，撤掉所有保活组件
+        KeepAlive.sync(this);
 
         led = findViewById(R.id.led);
         status = findViewById(R.id.status);
@@ -95,8 +95,8 @@ public class MainActivity extends Activity {
                     maybeAskBattery();
                 } else {
                     Prefs.setRunning(MainActivity.this, false);
-                    // 服务已停止：同步撤掉看门狗，避免空转检查
-                    BootReceiver.cancelWatchdog(MainActivity.this);
+                    // 短信转发未开时同步撤掉静音保活与看门狗，避免空转
+                    KeepAlive.sync(MainActivity.this);
                     stopService(new Intent(MainActivity.this, ServerService.class));
                     syncUi();
                 }
@@ -125,12 +125,8 @@ public class MainActivity extends Activity {
             @Override
             public void onCheckedChanged(CompoundButton b, boolean on) {
                 Prefs.set(MainActivity.this, "keepAlive", on);
-                // 服务没在运行时不保留看门狗，运行中才需要它兜底
-                if (on && ServerService.running) {
-                    BootReceiver.scheduleWatchdog(MainActivity.this);
-                } else {
-                    BootReceiver.cancelWatchdog(MainActivity.this);
-                }
+                // 看门狗只在短信转发/启动服务开启时才需要，统一由门控对齐
+                KeepAlive.sync(MainActivity.this);
             }
         });
 
@@ -167,14 +163,32 @@ public class MainActivity extends Activity {
             @Override
             public void onCheckedChanged(CompoundButton b, boolean on) {
                 Prefs.set(MainActivity.this, "power", on);
-                // 间隔与闹钟类型都随模式变化；只有服务在运行时才需要看门狗
-                if (Prefs.get(MainActivity.this, "keepAlive", true) && ServerService.running) {
-                    BootReceiver.scheduleWatchdog(MainActivity.this);
-                }
+                // 间隔与 WiFi 锁档位都随模式变化；只有保活门控开启时才生效
+                KeepAlive.sync(MainActivity.this);
+                if (ServerService.running) ServerService.applyPowerSetting(MainActivity.this);
                 Toast.makeText(MainActivity.this,
-                        on ? "省电模式：看门狗 30 分钟检查一次，且不主动唤醒设备"
-                                : "高性能模式：看门狗 15 分钟检查一次，唤醒 CPU 以尽快自愈",
+                        on ? "省电模式：看门狗 30 分钟检查一次，WiFi 高性能保活"
+                                : "高性能模式：看门狗 15 分钟检查一次，WiFi 低延迟，锁屏推送更快",
                         Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        Switch swStrong = (Switch) findViewById(R.id.sw_strong);
+        swStrong.setChecked(Prefs.get(this, "strongKeep", true));
+        swStrong.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
+            @Override
+            public void onCheckedChanged(CompoundButton b, boolean on) {
+                Prefs.set(MainActivity.this, "strongKeep", on);
+                KeepAlive.sync(MainActivity.this);
+                if (on) {
+                    Toast.makeText(MainActivity.this,
+                            KeepAlive.needed(MainActivity.this)
+                                    ? "已开启强力保活：静音播放音乐，避免锁屏后被系统冻结"
+                                    : "需开启「短信转发」或「启动服务」后才会生效",
+                            Toast.LENGTH_SHORT).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "已关闭强力保活", Toast.LENGTH_SHORT).show();
+                }
             }
         });
 
@@ -213,6 +227,8 @@ public class MainActivity extends Activity {
                     return;
                 }
                 Prefs.set(MainActivity.this, "smsForward", on);
+                // 短信转发是保活门控之一：开启即开始保活，关闭且服务未运行时停止
+                KeepAlive.sync(MainActivity.this);
                 if (on && Prefs.smsUrl(MainActivity.this).trim().isEmpty()) {
                     Toast.makeText(MainActivity.this,
                             "请先填写接口地址与 JSON 模板", Toast.LENGTH_LONG).show();
@@ -345,7 +361,7 @@ public class MainActivity extends Activity {
         Prefs.set(this, "batAsked", true);
         new AlertDialog.Builder(this)
                 .setTitle("保持后台接收")
-                .setMessage("系统可能在后台清理本应用，导致漏收消息。建议把 Webhook 加入电池优化白名单；"
+                .setMessage("系统可能在后台清理本应用，导致漏收消息。建议把本应用加入电池优化白名单；"
                         + "部分手机还需在系统设置中允许「自启动」与「后台运行」。")
                 .setNegativeButton("暂不", null)
                 .setPositiveButton("去设置", new DialogInterface.OnClickListener() {
@@ -438,6 +454,17 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        // 自愈：服务此前被系统清理，回到应用时立即拉起，不必等看门狗
+        if (Prefs.get(this, "running", false) && !ServerService.running) {
+            try {
+                Intent i = new Intent(this, ServerService.class);
+                i.putExtra(ServerService.EXTRA_PORT, Prefs.getPort(this));
+                startForegroundService(i);
+            } catch (Exception ignored) {
+            }
+        }
+        // 短信转发/启动服务任一开启时，才让保活组件保持运行
+        KeepAlive.sync(this);
         syncUi();
         applyHideRecents();
         handler.post(poll);
@@ -500,7 +527,7 @@ public class MainActivity extends Activity {
 
         // 未进白名单时，锁屏后系统会限制后台网络，是"消息收不到"的头号原因，运行期间持续提示
         if (run && !whitelisted) {
-            hint.setText("未加入电池白名单：锁屏后系统会限制后台网络，消息可能延迟或漏收，点击去设置");
+            hint.setText("未加入电池白名单：锁屏后系统会限制后台网络，消息可能延迟或漏收；建议同时开启「强力保活」，点击去设置");
             hint.setVisibility(View.VISIBLE);
         } else {
             hint.setVisibility(View.GONE);

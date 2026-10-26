@@ -15,9 +15,12 @@ import android.media.MediaPlayer;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
+import android.net.wifi.WifiManager;
+import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -67,6 +70,12 @@ public class ServerService extends Service {
     private Ringtone lastRing;
     private String curMsgChannel;
 
+    /** 锁屏保活：息屏后 CPU 休眠、WiFi 进省电模式，入站推送会被系统吞掉 */
+    private PowerManager.WakeLock wakeLock;
+    private WifiManager.WifiLock wifiLock;
+    /** 强力保活：0 音量静音音频，让系统把本进程当作正在播放音乐的应用 */
+    private SilentAudio silent;
+
     /** 持续响铃状态 */
     private final Object ringLock = new Object();
     private MediaPlayer ringPlayer;
@@ -80,15 +89,34 @@ public class ServerService extends Service {
             stopRingContinuous();
         }
     };
-    /** 亮屏/解锁时校准响铃时长：锁屏期间已超过 60 秒的，直接停掉不再响；顺带补发没发出去的短信 */
+    /** 亮屏/解锁时校准响铃时长；息屏时重申前台状态，尽量维持保活等级 */
     private final BroadcastReceiver screenOn = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
+            String a = intent == null ? null : intent.getAction();
+            if (Intent.ACTION_SCREEN_OFF.equals(a)) {
+                // 部分 ROM 息屏后会把前台服务降级为普通服务，随后清理进程；
+                // 这里在息屏瞬间重申一次前台状态，尽量保住进程优先级
+                reassertForeground();
+                return;
+            }
             syncRingClock();
             // 亮屏/解锁后网络恢复，补发息屏期间 Doze 下没发出去的短信
             SmsOutbox.flushAsync(context);
+            reassertForeground();
+            // 醒来后按当前开关重新对齐保活，避免休眠期间闹钟被整体顺延
+            KeepAlive.sync(context);
         }
     };
+
+    /** 重新声明前台服务（息屏/亮屏时调用），保持进程优先级 */
+    private void reassertForeground() {
+        if (!Prefs.get(this, "fgsNotify", true)) return;
+        try {
+            startForeground(FGS_ID, buildServiceNotification(listenPort > 0 ? listenPort : Prefs.getPort(this)));
+        } catch (Exception ignored) {
+        }
+    }
 
     /** 2 秒内的消息合并成一次提醒，避免高频推送反复响铃 / 刷通知 */
     private final List<String> batch = new ArrayList<String>();
@@ -110,11 +138,14 @@ public class ServerService extends Service {
         super.onCreate();
         instance = this;
         NotificationManager nm = getSystemService(NotificationManager.class);
-        nm.createNotificationChannel(new NotificationChannel(CH_SERVICE, "服务状态", NotificationManager.IMPORTANCE_MIN));
+        // 用 LOW 而非 MIN：部分 ROM（尤其华为/鸿蒙）会隐藏 MIN 级通道，
+        // 前台服务通知一旦不可见，进程会被判定为后台而清理
+        nm.createNotificationChannel(new NotificationChannel(CH_SERVICE, "音乐播放", NotificationManager.IMPORTANCE_LOW));
         ensureMsgChannel();
         floating = new FloatingManager(this);
         IntentFilter f = new IntentFilter();
         f.addAction(Intent.ACTION_SCREEN_ON);
+        f.addAction(Intent.ACTION_SCREEN_OFF);
         f.addAction(Intent.ACTION_USER_PRESENT);
         registerReceiver(screenOn, f);
     }
@@ -142,14 +173,17 @@ public class ServerService extends Service {
             }
         }
         Prefs.setRunning(this, true);
-        if (Prefs.get(this, "keepAlive", true)) BootReceiver.scheduleWatchdog(this);
+        // 持有 CPU/WiFi 锁，保证锁屏状态下推送能立刻到达
+        acquireKeepAwake();
+        // 统一门控：只有短信转发或启动服务开启时才保活；强力保活时由 sync 启动静音音频
+        KeepAlive.sync(this);
         return START_STICKY;
     }
 
     /** 用户从最近任务划掉时，延时尝试重新拉起 */
     @Override
     public void onTaskRemoved(Intent rootIntent) {
-        if (Prefs.get(this, "keepAlive", true)) BootReceiver.scheduleRestart(this, 2000);
+        if (KeepAlive.needed(this)) BootReceiver.scheduleRestart(this, 2000);
         super.onTaskRemoved(rootIntent);
     }
 
@@ -159,6 +193,8 @@ public class ServerService extends Service {
         thread = null;
         running = false;
         listenPort = -1;
+        stopSilent();
+        releaseKeepAwake();
         if (floating != null) floating.shutdown();
         stopRing();
         stopRingContinuous();
@@ -169,6 +205,8 @@ public class ServerService extends Service {
         ui.removeCallbacks(flushBatch);
         instance = null;
         // 不在这里清 running 标记：被系统回收时保留，看门狗才能自动拉起
+        // 但要让保活组件随服务状态重新对齐（短信转发开启时仍保留静音保活）
+        KeepAlive.sync(this);
         super.onDestroy();
     }
 
@@ -184,6 +222,82 @@ public class ServerService extends Service {
                 s.stopForeground(STOP_FOREGROUND_REMOVE);
             }
         } catch (Exception ignored) {
+        }
+    }
+
+    /**
+     * 服务运行期间持有 CPU 唤醒锁与 WiFi 锁：锁屏后系统会让 CPU 休眠、WiFi 进省电模式，
+     * 入站连接会被吞掉或延迟到亮屏，这是「推送到端口没反应」的直接原因。
+     * 只有短信转发或启动服务开启时服务才会运行，因此不会在不需要时耗电。
+     */
+    private void acquireKeepAwake() {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null && wakeLock == null) {
+                wakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "music:playback");
+                wakeLock.setReferenceCounted(false);
+                wakeLock.acquire();
+            }
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+            if (wm != null && wifiLock == null) {
+                int mode = WifiManager.WIFI_MODE_FULL_HIGH_PERF;
+                // 高性能模式且系统支持（Android 10+）时用低延迟档，锁屏推送更快到达
+                if (Build.VERSION.SDK_INT >= 29 && !Prefs.get(this, "power", true)) {
+                    mode = WifiManager.WIFI_MODE_FULL_LOW_LATENCY;
+                }
+                wifiLock = wm.createWifiLock(mode, "music:playback");
+                wifiLock.setReferenceCounted(false);
+                wifiLock.acquire();
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    private void releaseKeepAwake() {
+        if (wakeLock != null) {
+            try {
+                wakeLock.release();
+            } catch (Exception ignored) {
+            }
+            wakeLock = null;
+        }
+        if (wifiLock != null) {
+            try {
+                wifiLock.release();
+            } catch (Exception ignored) {
+            }
+            wifiLock = null;
+        }
+    }
+
+    /** 切换「省电模式」时立即生效：按新模式重建 WiFi 锁档位 */
+    static void applyPowerSetting(Context c) {
+        ServerService s = instance;
+        if (s == null) return;
+        try {
+            s.releaseKeepAwake();
+            s.acquireKeepAwake();
+        } catch (Exception ignored) {
+        }
+    }
+
+    /** 「强力保活」开关变化时立即生效：开关与门控都满足才播放静音音频 */
+    static void applyStrongSetting(Context c) {
+        ServerService s = instance;
+        if (s == null) return;
+        if (KeepAlive.strongEnabled(c) && KeepAlive.needed(c)) s.startSilent();
+        else s.stopSilent();
+    }
+
+    private void startSilent() {
+        if (silent == null) silent = new SilentAudio();
+        silent.start();
+    }
+
+    private void stopSilent() {
+        if (silent != null) {
+            silent.stop();
+            silent = null;
         }
     }
 
@@ -384,9 +498,10 @@ public class ServerService extends Service {
     private Notification buildServiceNotification(int port) {
         return new Notification.Builder(this, CH_SERVICE)
                 .setSmallIcon(R.drawable.ic_notification)
-                .setContentTitle("Webhook 服务运行中")
-                .setContentText("监听 0.0.0.0:" + port)
+                .setContentTitle("正在播放")
+                .setContentText("本地音乐 · 后台播放中")
                 .setOngoing(true)
+                .setShowWhen(false)
                 .setContentIntent(PendingIntent.getActivity(this, 0,
                         new Intent(this, MainActivity.class), PendingIntent.FLAG_IMMUTABLE))
                 .build();
@@ -397,7 +512,7 @@ public class ServerService extends Service {
         if (curMsgChannel != null) return;
         String id = "msg_alert";
         NotificationManager nm = getSystemService(NotificationManager.class);
-        NotificationChannel ch = new NotificationChannel(id, "Webhook 消息", NotificationManager.IMPORTANCE_DEFAULT);
+        NotificationChannel ch = new NotificationChannel(id, "消息提醒", NotificationManager.IMPORTANCE_DEFAULT);
         ch.enableVibration(false);
         ch.setSound(null, null);
         nm.createNotificationChannel(ch);

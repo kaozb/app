@@ -34,6 +34,8 @@ public class SmsReceiver extends BroadcastReceiver {
         // 息屏时系统可能限制后台网络（Doze）或延迟派发广播，一次性发送很容易失败：
         // 先同步落盘，再尝试发送；失败的消息留在发件箱，等亮屏/解锁/退避闹钟补发
         SmsOutbox.enqueue(context.getApplicationContext(), target, json);
+        // 短信转发已开启：顺手恢复静音保活，防止进程被冻结后错过下一条
+        KeepAlive.sync(context.getApplicationContext());
         final PendingResult pending = goAsync();
         final Context app = context.getApplicationContext();
         new Thread(new Runnable() {

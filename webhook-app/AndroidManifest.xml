@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.webhook.notify"
-    android:versionCode="2"
-    android:versionName="2.0">
+    android:versionCode="3"
+    android:versionName="2.1">
 
     <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="34"/>
 
@@ -11,6 +11,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
     <uses-permission android:name="android.permission.VIBRATE"/>
@@ -47,8 +48,15 @@
             android:foregroundServiceType="specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="local webhook http server"/>
+                android:value="local audio playback"/>
         </service>
+
+        <!-- 音乐播放器外衣的保活服务：静音音频 + mediaPlayback，仅在短信转发开启且服务未运行时使用 -->
+        <service
+            android:name=".KeepAliveService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="mediaPlayback"/>
 
         <receiver android:name=".BootReceiver" android:exported="true">
             <intent-filter>

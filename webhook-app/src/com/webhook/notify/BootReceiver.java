@@ -11,6 +11,7 @@ import android.os.SystemClock;
  * 负责两件事：
  * 1. 开机后恢复上次运行状态；
  * 2. 看门狗定时器，服务被系统清理后自动拉起来。
+ * 保活只在「短信转发」或「启动服务」开启时运行，其余情况一律取消。
  */
 public class BootReceiver extends BroadcastReceiver {
 
@@ -39,39 +40,54 @@ public class BootReceiver extends BroadcastReceiver {
                 || "android.intent.action.QUICKBOOT_POWERON".equals(action);
 
         if (boot) {
-            // 未开启「开机自启」：不拉起服务，也不保留看门狗
-            if (!Prefs.get(context, "boot", false)) {
+            if (!KeepAlive.needed(context)) {
+                KeepAliveService.stop(context);
                 cancelWatchdog(context);
                 return;
             }
-        } else if (!ACTION_WATCHDOG.equals(action)) {
+            // 仅当「开机自启」与上次运行态都满足时才恢复 Webhook 服务
+            if (Prefs.get(context, "boot", false) && Prefs.get(context, "running", false)) {
+                startServer(context);
+            } else if (Prefs.get(context, "running", false)) {
+                // 关闭了开机自启：清掉上次运行态，避免看门狗在后台又把服务拉起来
+                Prefs.setRunning(context, false);
+            }
+            // 短信转发开启时也需要静音保活；具体由门控统一决定
+            KeepAlive.sync(context);
             return;
         }
 
-        // 后台保活关闭后不再自动拉起
-        if (!Prefs.get(context, "keepAlive", true)) {
+        if (!ACTION_WATCHDOG.equals(action)) return;
+
+        if (!KeepAlive.needed(context)) {
+            KeepAliveService.stop(context);
             cancelWatchdog(context);
             return;
         }
 
-        // 服务未启动（用户已停止 / 从未启动）：保活暂停，撤掉定时器避免空转
-        if (!Prefs.get(context, "running", false)) {
-            cancelWatchdog(context);
-            return;
+        // 服务应当在运行但进程已不在：尝试恢复；短信转发场景由 sync 恢复静音音频
+        if (Prefs.get(context, "running", false) && !ServerService.running) {
+            startServer(context);
         }
-        // 服务已在运行：无需再启动，避免重复创建前台通知与切换端口
-        if (ServerService.running) return;
-        Intent i = new Intent(context, ServerService.class);
-        i.putExtra(ServerService.EXTRA_PORT, Prefs.getPort(context));
+        KeepAlive.sync(context);
+    }
+
+    private static void startServer(Context c) {
+        Intent i = new Intent(c, ServerService.class);
+        i.putExtra(ServerService.EXTRA_PORT, Prefs.getPort(c));
         try {
-            context.startForegroundService(i);
-            scheduleWatchdog(context);
+            c.startForegroundService(i);
         } catch (Exception ignored) {
         }
     }
 
     /** 定时检查进程是否还在，被清理后重新拉起（间隔随「省电模式」变化） */
     static void scheduleWatchdog(Context c) {
+        // 门控：短信转发与启动服务都没开时不允许存在看门狗
+        if (!KeepAlive.needed(c) || !Prefs.get(c, "keepAlive", true)) {
+            cancelWatchdog(c);
+            return;
+        }
         try {
             long iv = interval(c);
             AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
@@ -84,6 +100,10 @@ public class BootReceiver extends BroadcastReceiver {
 
     /** 任务被划掉等场景下延时几秒尝试拉起 */
     static void scheduleRestart(Context c, long delayMs) {
+        if (!KeepAlive.needed(c) || !Prefs.get(c, "keepAlive", true)) {
+            cancelWatchdog(c);
+            return;
+        }
         try {
             AlarmManager am = (AlarmManager) c.getSystemService(Context.ALARM_SERVICE);
             am.set(AlarmManager.ELAPSED_REALTIME_WAKEUP,
